@@ -1,0 +1,165 @@
+{% extends "layout.html" %}
+
+{% block title %}Esegui Audit - ABSC Audit System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>
+            <i class="fas fa-play-circle me-2"></i>
+            Esegui Audit
+        </h1>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Configura Audit</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('audit_run') }}">
+                <div class="mb-3">
+                    <label for="target_id" class="form-label">Target</label>
+                    <select name="target_id" id="target_id" class="form-select" required>
+                        <option value="">Seleziona un target</option>
+                        {% for target in targets %}
+                        <option value="{{ target.id }}" {% if request.args.get('target_id') == target.id %}selected{% endif %}>
+                            {{ target.name }} ({{ target.hostname }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Controlli da Eseguire</label>
+
+                    <div class="mb-3">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" id="selectAll" onchange="toggleAllChecks(this.checked)">
+                            <label class="form-check-label" for="selectAll">Seleziona tutti</label>
+                        </div>
+
+                        <div class="btn-group ms-3">
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectByPriority(1)">Alta Priorità</button>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectByPriority(2)">Media Priorità</button>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectByPriority(3)">Bassa Priorità</button>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        {% set categories = {} %}
+                        {% for check in checks %}
+                            {% if check.category not in categories %}
+                                {% set _ = categories.update({check.category: []}) %}
+                            {% endif %}
+                            {% set _ = categories[check.category].append(check) %}
+                        {% endfor %}
+
+                        {% for category, category_checks in categories.items() %}
+                        <div class="col-md-4 mb-3">
+                            <div class="card">
+                                <div class="card-header">
+                                    <div class="form-check">
+                                        <input class="form-check-input category-check" type="checkbox" id="category_{{ category }}"
+                                               onchange="toggleCategoryChecks('{{ category }}', this.checked)">
+                                        <label class="form-check-label" for="category_{{ category }}">
+                                            <strong>{{ category }}</strong>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="card-body" style="max-height: 200px; overflow-y: auto;">
+                                    {% for check in category_checks %}
+                                    <div class="form-check">
+                                        <input class="form-check-input check-item category-{{ category }} priority-{{ check.priority }}"
+                                               type="checkbox" name="check_ids" id="check_{{ check.id }}"
+                                               value="{{ check.id }}"
+                                               {% if request.args.get('check_id') == check.id %}checked{% endif %}>
+                                        <label class="form-check-label" for="check_{{ check.id }}">
+                                            <span class="badge {% if check.priority == 1 %}bg-danger{% elif check.priority == 2 %}bg-warning{% else %}bg-success{% endif %} me-1">
+                                                {{ check.priority }}
+                                            </span>
+                                            {{ check.id }} - {{ check.name }}
+                                        </label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="parallel" id="parallel">
+                        <label class="form-check-label" for="parallel">
+                            Esecuzione parallela (più veloce ma potrebbe causare problemi su alcuni sistemi)
+                        </label>
+                    </div>
+                </div>
+
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-play-circle me-2"></i>
+                        Esegui Audit
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Funzione per selezionare/deselezionare tutti i controlli
+    function toggleAllChecks(checked) {
+        document.querySelectorAll('.check-item').forEach(function(checkbox) {
+            checkbox.checked = checked;
+        });
+
+        // Aggiorna gli stati delle caselle delle categorie
+        document.querySelectorAll('.category-check').forEach(function(checkbox) {
+            checkbox.checked = checked;
+        });
+    }
+
+    // Funzione per selezionare/deselezionare tutti i controlli di una categoria
+    function toggleCategoryChecks(category, checked) {
+        document.querySelectorAll('.category-' + category).forEach(function(checkbox) {
+            checkbox.checked = checked;
+        });
+    }
+
+    // Funzione per selezionare tutti i controlli di una specifica priorità
+    function selectByPriority(priority) {
+        // Deseleziona prima tutti
+        document.querySelectorAll('.check-item').forEach(function(checkbox) {
+            checkbox.checked = false;
+        });
+
+        // Seleziona solo quelli della priorità specificata
+        document.querySelectorAll('.priority-' + priority).forEach(function(checkbox) {
+            checkbox.checked = true;
+        });
+
+        // Aggiorna gli stati delle caselle delle categorie
+        updateCategoryCheckboxes();
+    }
+
+    // Funzione per aggiornare lo stato delle caselle delle categorie
+    function updateCategoryCheckboxes() {
+        document.querySelectorAll('.category-check').forEach(function(categoryCheckbox) {
+            const category = categoryCheckbox.id.replace('category_', '');
+            const categoryChecks = document.querySelectorAll('.category-' + category);
+            const checkedCategoryChecks = document.querySelectorAll('.category-' + category + ':checked');
+
+            categoryCheckbox.checked = categoryChecks.length > 0 && categoryChecks.length === checkedCategoryChecks.length;
+        });
+    }
+
+    // Inizializza lo stato delle caselle delle categorie
+    document.addEventListener('DOMContentLoaded', function() {
+        updateCategoryCheckboxes();
+    });
+</script>
+{% endblock %}

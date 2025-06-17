@@ -1,0 +1,179 @@
+{% extends "layout.html" %}
+
+{% block title %}Dashboard - ABSC Audit System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mb-4">Dashboard</h1>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card dashboard-stat-card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-server me-2"></i>
+                        Target
+                    </h5>
+                    <h2 class="display-4">{{ targets_count }}</h2>
+                    <p class="card-text">Target monitorati</p>
+                    <a href="{{ url_for('targets_list') }}" class="btn btn-outline-light btn-sm">Vedi tutti</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card dashboard-stat-card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-check-circle me-2"></i>
+                        Conformità
+                    </h5>
+                    <h2 class="display-4">{{ compliance_rate|round(1) }}%</h2>
+                    <p class="card-text">Tasso di conformità</p>
+                    <div class="progress bg-light">
+                        <div class="progress-bar bg-white" role="progressbar" style="width: {{ compliance_rate }}%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card dashboard-stat-card bg-info text-white">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-clipboard-check me-2"></i>
+                        Controlli
+                    </h5>
+                    <h2 class="display-4">{{ compliant }}/{{ total_checks }}</h2>
+                    <p class="card-text">Controlli conformi</p>
+                    <a href="{{ url_for('checks_list') }}" class="btn btn-outline-light btn-sm">Vedi tutti</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Audits and Charts -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-history me-2"></i>
+                        Audit Recenti
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Target</th>
+                                    <th>Controllo</th>
+                                    <th>Data</th>
+                                    <th>Stato</th>
+                                    <th>Score</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for audit in recent_audits %}
+                                <tr>
+                                    <td>{{ audit.target_name }}</td>
+                                    <td>{{ audit.check_id }}</td>
+                                    <td>{{ audit.timestamp.strftime('%d/%m/%Y %H:%M') }}</td>
+                                    <td>
+                                        <span class="badge {% if audit.score >= 70 %}bg-success{% elif audit.score >= 50 %}bg-warning{% else %}bg-danger{% endif %}">
+                                            {{ audit.status }}
+                                        </span>
+                                    </td>
+                                    <td>{{ audit.score|round(1) }}%</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center">Nessun audit recente</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <a href="{{ url_for('audit_run') }}" class="btn btn-primary">
+                        <i class="fas fa-play-circle me-2"></i>
+                        Esegui nuovo audit
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>
+                        Distribuzione Conformità
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="complianceChart" height="200"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        Stato Generale
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="progress mb-3">
+                        <div class="progress-bar bg-success" role="progressbar" style="width: {{ compliant / total_checks * 100 if total_checks > 0 else 0 }}%;"
+                            aria-valuenow="{{ compliant }}" aria-valuemin="0" aria-valuemax="{{ total_checks }}">
+                            {{ compliant }} conformi
+                        </div>
+                        <div class="progress-bar bg-danger" role="progressbar" style="width: {{ (total_checks - compliant) / total_checks * 100 if total_checks > 0 else 0 }}%;"
+                            aria-valuenow="{{ total_checks - compliant }}" aria-valuemin="0" aria-valuemax="{{ total_checks }}">
+                            {{ total_checks - compliant }} non conformi
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <span class="badge bg-success">Conformi: {{ compliant }}</span>
+                        <span class="badge bg-danger">Non conformi: {{ total_checks - compliant }}</span>
+                        <span class="badge bg-primary">Totale: {{ total_checks }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Pie chart for compliance distribution
+    var ctx = document.getElementById('complianceChart').getContext('2d');
+    var myPieChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: ['Conformi', 'Non Conformi'],
+            datasets: [{
+                data: [{{ compliant }}, {{ total_checks - compliant }}],
+                backgroundColor: [
+                    '#28a745',
+                    '#dc3545'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

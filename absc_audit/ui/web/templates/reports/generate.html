@@ -1,0 +1,151 @@
+{% extends "layout.html" %}
+
+{% block title %}Genera Report - ABSC Audit System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>
+            <i class="fas fa-file-alt me-2"></i>
+            Genera Report
+        </h1>
+        <a href="{{ url_for('reports_list') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>
+            Torna alla lista
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="POST">
+                {{ form.csrf_token }}
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="name" class="form-label">Nome del Report</label>
+                        {{ form.name(class="form-control", placeholder="Inserisci nome") }}
+                        {% if form.name.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.name.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="format" class="form-label">Formato</label>
+                        {{ form.format(class="form-control") }}
+                        {% if form.format.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.format.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="description" class="form-label">Descrizione</label>
+                    {{ form.description(class="form-control", rows=2, placeholder="Inserisci descrizione") }}
+                    {% if form.description.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.description.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label">Target</label>
+                        <div class="card">
+                            <div class="card-body" style="max-height: 250px; overflow-y: auto;">
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="selectAllCategories" onchange="toggleAllCategories(this.checked)">
+                                        <label class="form-check-label" for="selectAllCategories">
+                                            <strong>Seleziona tutte</strong>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                {% for category_id, category_name in form.categories.choices %}
+                                <div class="form-check">
+                                    <input class="form-check-input category-checkbox" type="checkbox" name="categories" id="category_{{ category_id }}" value="{{ category_id }}">
+                                    <label class="form-check-label" for="category_{{ category_id }}">
+                                        {{ category_name }}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <small class="form-text text-muted">Se non selezioni nessuna categoria, il report includerà tutti i controlli.</small>
+                    </div>
+                </div>
+
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Il report verrà generato utilizzando i risultati più recenti per ogni controllo selezionato e target. Al termine della generazione, il report verrà scaricato automaticamente.
+                </div>
+
+                <div class="d-flex justify-content-end mt-4">
+                    <a href="{{ url_for('reports_list') }}" class="btn btn-secondary me-2">Annulla</a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-file-download me-2"></i>
+                        Genera e Scarica
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Funzione per selezionare/deselezionare tutti i target
+    function toggleAllTargets(checked) {
+        document.querySelectorAll('.target-checkbox').forEach(function(checkbox) {
+            checkbox.checked = checked;
+        });
+    }
+
+    // Funzione per selezionare/deselezionare tutte le categorie
+    function toggleAllCategories(checked) {
+        document.querySelectorAll('.category-checkbox').forEach(function(checkbox) {
+            checkbox.checked = checked;
+        });
+    }
+</script>
+{% endblock %}
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="selectAllTargets" onchange="toggleAllTargets(this.checked)">
+                                        <label class="form-check-label" for="selectAllTargets">
+                                            <strong>Seleziona tutti</strong>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                {% for target_id, target_name in form.target_ids.choices %}
+                                    {% if target_id %}
+                                    <div class="form-check">
+                                        <input class="form-check-input target-checkbox" type="checkbox" name="target_ids" id="target_{{ target_id }}" value="{{ target_id }}">
+                                        <label class="form-check-label" for="target_{{ target_id }}">
+                                            {{ target_name }}
+                                        </label>
+                                    </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <small class="form-text text-muted">Se non selezioni nessun target, il report includerà tutti i target.</small>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Categorie</label>
+                        <div class="card">
+                            <div class="card-body" style="max-height: 250px; overflow-y: auto;">

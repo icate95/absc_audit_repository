@@ -1,0 +1,192 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ target.name }} - ABSC Audit System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>
+            <i class="fas fa-server me-2"></i>
+            {{ target.name }}
+        </h1>
+        <div>
+            <a href="{{ url_for('target_edit', target_id=target.id) }}" class="btn btn-warning">
+                <i class="fas fa-edit me-2"></i>
+                Modifica
+            </a>
+            <a href="{{ url_for('targets_list') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>
+                Torna alla lista
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Informazioni
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <table class="table">
+                        <tr>
+                            <th>Hostname:</th>
+                            <td>{{ target.hostname }}</td>
+                        </tr>
+                        <tr>
+                            <th>IP:</th>
+                            <td>{{ target.ip_address }}</td>
+                        </tr>
+                        <tr>
+                            <th>Sistema Operativo:</th>
+                            <td>
+                                <span class="badge {% if target.os_type == 'windows' %}bg-primary{% elif target.os_type == 'linux' %}bg-success{% else %}bg-secondary{% endif %}">
+                                    {{ target.os_type }}
+                                </span>
+                                {% if target.os_version %}
+                                {{ target.os_version }}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Gruppo:</th>
+                            <td>{{ target.group }}</td>
+                        </tr>
+                        <tr>
+                            <th>Tag:</th>
+                            <td>
+                                {% for tag in target.tags %}
+                                <span class="badge bg-info">{{ tag }}</span>
+                                {% endfor %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Creato:</th>
+                            <td>{{ target.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                        </tr>
+                        <tr>
+                            <th>Aggiornato:</th>
+                            <td>{{ target.updated_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-clipboard-check me-2"></i>
+                        Stato Conformità
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        <div class="display-4 fw-bold">{{ compliance_rate|round(1) }}%</div>
+                        <p class="text-muted">Tasso di conformità</p>
+                    </div>
+
+                    <div class="progress mb-3">
+                        <div class="progress-bar bg-success" role="progressbar" style="width: {{ compliant / total_checks * 100 if total_checks > 0 else 0 }}%;"
+                            aria-valuenow="{{ compliant }}" aria-valuemin="0" aria-valuemax="{{ total_checks }}">
+                            {{ compliant }} conformi
+                        </div>
+                        <div class="progress-bar bg-danger" role="progressbar" style="width: {{ (total_checks - compliant) / total_checks * 100 if total_checks > 0 else 0 }}%;"
+                            aria-valuenow="{{ total_checks - compliant }}" aria-valuemin="0" aria-valuemax="{{ total_checks }}">
+                            {{ total_checks - compliant }} non conformi
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <span class="badge bg-success">Conformi: {{ compliant }}</span>
+                        <span class="badge bg-danger">Non conformi: {{ total_checks - compliant }}</span>
+                        <span class="badge bg-primary">Totale: {{ total_checks }}</span>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <a href="{{ url_for('audit_run') }}?target_id={{ target.id }}" class="btn btn-primary w-100">
+                        <i class="fas fa-play-circle me-2"></i>
+                        Esegui Nuovo Audit
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        Risultati Audit
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Controllo</th>
+                                    <th>Stato</th>
+                                    <th>Score</th>
+                                    <th>Data</th>
+                                    <th>Note</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for result in results %}
+                                <tr class="{% if result.score < 70 %}table-danger{% endif %}">
+                                    <td>{{ result.id[:8] }}</td>
+                                    <td>{{ result.check_id }}</td>
+                                    <td>
+                                        <span class="badge {% if result.score >= 70 %}bg-success{% elif result.score >= 50 %}bg-warning{% else %}bg-danger{% endif %}">
+                                            {{ result.status }}
+                                        </span>
+                                    </td>
+                                    <td>{{ result.score|round(1) }}%</td>
+                                    <td>{{ result.timestamp.strftime('%d/%m/%Y %H:%M') }}</td>
+                                    <td>
+                                        {% if result.notes %}
+                                        <button type="button" class="btn btn-sm btn-info" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ result.notes }}">
+                                            <i class="fas fa-info-circle"></i>
+                                        </button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center">Nessun risultato di audit per questo target</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            {% if target.description %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-file-alt me-2"></i>
+                        Descrizione
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p>{{ target.description }}</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(function () {
+        $('[data-bs-toggle="tooltip"]').tooltip();
+    });
+</script>
+{% endblock %}

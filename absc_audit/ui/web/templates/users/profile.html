@@ -1,0 +1,177 @@
+{% extends "layout.html" %}
+
+{% block title %}Profilo - ABSC Audit System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>
+            <i class="fas fa-user me-2"></i>
+            Il Mio Profilo
+        </h1>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Informazioni Utente
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <div class="avatar avatar-xl">
+                            <span class="avatar-text rounded-circle bg-primary">
+                                {{ user.first_name[0] if user.first_name else "" }}{{ user.last_name[0] if user.last_name else "" }}
+                            </span>
+                        </div>
+                        <h4 class="mt-2">{{ user.first_name }} {{ user.last_name }}</h4>
+                        <p class="text-muted">{{ user.email }}</p>
+                    </div>
+
+                    <table class="table">
+                        <tr>
+                            <th>Username:</th>
+                            <td>{{ user.username }}</td>
+                        </tr>
+                        <tr>
+                            <th>Ruolo:</th>
+                            <td>
+                                <span class="badge {% if user.role == 'admin' %}bg-danger{% else %}bg-primary{% endif %}">
+                                    {{ user.role }}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Stato:</th>
+                            <td>
+                                <span class="badge {% if user.enabled %}bg-success{% else %}bg-danger{% endif %}">
+                                    {% if user.enabled %}Attivo{% else %}Disattivato{% endif %}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Ultimo Accesso:</th>
+                            <td>
+                                {% if user.last_login %}
+                                {{ user.last_login.strftime('%d/%m/%Y %H:%M') }}
+                                {% else %}
+                                <span class="text-muted">Mai</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Registrato:</th>
+                            <td>{{ user.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-edit me-2"></i>
+                        Modifica Profilo
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        {{ form.csrf_token }}
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="first_name" class="form-label">Nome</label>
+                                {{ form.first_name(class="form-control", placeholder="Inserisci nome") }}
+                                {% if form.first_name.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.first_name.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="last_name" class="form-label">Cognome</label>
+                                {{ form.last_name(class="form-control", placeholder="Inserisci cognome") }}
+                                {% if form.last_name.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.last_name.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            {{ form.email(class="form-control", placeholder="Inserisci email") }}
+                            {% if form.email.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.email.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <hr class="my-4">
+                        <h5>Cambia Password</h5>
+
+                        <div class="mb-3">
+                            <label for="current_password" class="form-label">Password Attuale</label>
+                            {{ form.current_password(class="form-control", placeholder="Inserisci password attuale") }}
+                            {% if form.current_password.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.current_password.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="new_password" class="form-label">Nuova Password</label>
+                                {{ form.new_password(class="form-control", placeholder="Inserisci nuova password") }}
+                                {% if form.new_password.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.new_password.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="confirm_password" class="form-label">Conferma Nuova Password</label>
+                                {{ form.confirm_password(class="form-control", placeholder="Conferma nuova password") }}
+                                {% if form.confirm_password.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.confirm_password.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="d-grid mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>
+                                Salva Modifiche
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

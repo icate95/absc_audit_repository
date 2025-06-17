@@ -1,0 +1,207 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ title }} - ABSC Audit System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{{ title }}</h1>
+        <a href="{{ url_for('scheduled_audits_list') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>
+            Torna alla lista
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="POST">
+                {{ form.csrf_token }}
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="name" class="form-label">Nome</label>
+                        {{ form.name(class="form-control", placeholder="Inserisci nome") }}
+                        {% if form.name.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.name.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="frequency" class="form-label">Frequenza</label>
+                        {{ form.frequency(class="form-control", onchange="updateFrequencyFields()") }}
+                        {% if form.frequency.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.frequency.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-4 weekly-field">
+                        <label for="day_of_week" class="form-label">Giorno della Settimana</label>
+                        {{ form.day_of_week(class="form-control") }}
+                        {% if form.day_of_week.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.day_of_week.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-4 monthly-field">
+                        <label for="day_of_month" class="form-label">Giorno del Mese (1-31)</label>
+                        {{ form.day_of_month(class="form-control", min=1, max=31) }}
+                        {% if form.day_of_month.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.day_of_month.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-2">
+                        <label for="hour" class="form-label">Ora (0-23)</label>
+                        {{ form.hour(class="form-control", min=0, max=23) }}
+                        {% if form.hour.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.hour.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-2">
+                        <label for="minute" class="form-label">Minuto (0-59)</label>
+                        {{ form.minute(class="form-control", min=0, max=59) }}
+                        {% if form.minute.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.minute.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="target_ids" class="form-label">Target</label>
+                        {{ form.target_ids(class="form-select", multiple=True, size=6) }}
+                        {% if form.target_ids.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.target_ids.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <small class="form-text text-muted">Tieni premuto Ctrl per selezionare più target.</small>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="check_ids" class="form-label">Controlli</label>
+                        {{ form.check_ids(class="form-select", multiple=True, size=6) }}
+                        {% if form.check_ids.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.check_ids.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <small class="form-text text-muted">Tieni premuto Ctrl per selezionare più controlli.</small>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="description" class="form-label">Descrizione</label>
+                    {{ form.description(class="form-control", rows=3, placeholder="Inserisci descrizione") }}
+                    {% if form.description.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.description.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="form-check mb-3">
+                            {{ form.enabled(class="form-check-input") }}
+                            <label class="form-check-label" for="enabled">Abilitato</label>
+                        </div>
+
+                        <div class="form-check">
+                            {{ form.notify_on_completion(class="form-check-input", onchange="toggleNotifyEmail()") }}
+                            <label class="form-check-label" for="notify_on_completion">Notifica al completamento</label>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 notify-email-field">
+                        <label for="notify_email" class="form-label">Email per notifiche</label>
+                        {{ form.notify_email(class="form-control", placeholder="Inserisci email") }}
+                        {% if form.notify_email.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.notify_email.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end mt-4">
+                    <a href="{{ url_for('scheduled_audits_list') }}" class="btn btn-secondary me-2">Annulla</a>
+                    <button type="submit" class="btn btn-primary">Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Funzione per mostrare/nascondere i campi specifici per la frequenza
+    function updateFrequencyFields() {
+        const frequency = document.getElementById('frequency').value;
+
+        // Campi per frequenza settimanale
+        const weeklyFields = document.querySelectorAll('.weekly-field');
+        weeklyFields.forEach(field => {
+            field.style.display = frequency === 'weekly' ? 'block' : 'none';
+        });
+
+        // Campi per frequenza mensile
+        const monthlyFields = document.querySelectorAll('.monthly-field');
+        monthlyFields.forEach(field => {
+            field.style.display = frequency === 'monthly' ? 'block' : 'none';
+        });
+    }
+
+    // Funzione per mostrare/nascondere il campo email notifica
+    function toggleNotifyEmail() {
+        const notifyEnabled = document.getElementById('notify_on_completion').checked;
+        const notifyEmailFields = document.querySelectorAll('.notify-email-field');
+
+        notifyEmailFields.forEach(field => {
+            field.style.display = notifyEnabled ? 'block' : 'none';
+        });
+    }
+
+    // Inizializza lo stato dei campi al caricamento della pagina
+    document.addEventListener('DOMContentLoaded', function() {
+        updateFrequencyFields();
+        toggleNotifyEmail();
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,227 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ check.id }} - ABSC Audit System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>
+            <i class="fas fa-tasks me-2"></i>
+            Controllo {{ check.id }}
+        </h1>
+        <a href="{{ url_for('checks_list') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>
+            Torna alla lista
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Informazioni Controllo
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <h3>{{ check.name }}</h3>
+                    <p>{{ check.description }}</p>
+
+                    <div class="mt-4">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <strong>Categoria:</strong>
+                            </div>
+                            <div class="col-md-9">
+                                <span class="badge bg-info">{{ check.category }}</span>
+                            </div>
+                        </div>
+
+                        <div class="row mt-2">
+                            <div class="col-md-3">
+                                <strong>Priorità:</strong>
+                            </div>
+                            <div class="col-md-9">
+                                <span class="badge {% if check.priority == 1 %}bg-danger{% elif check.priority == 2 %}bg-warning{% else %}bg-success{% endif %}">
+                                    {{ check.priority }}
+                                </span>
+                                {% if check.priority == 1 %}
+                                Alta
+                                {% elif check.priority == 2 %}
+                                Media
+                                {% else %}
+                                Bassa
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row mt-2">
+                            <div class="col-md-3">
+                                <strong>Domanda:</strong>
+                            </div>
+                            <div class="col-md-9">
+                                {{ check.question }}
+                            </div>
+                        </div>
+
+                        <div class="row mt-2">
+                            <div class="col-md-3">
+                                <strong>Possibili risposte:</strong>
+                            </div>
+                            <div class="col-md-9">
+                                <ul class="list-unstyled">
+                                    {% for answer in check.possible_answers %}
+                                    <li>
+                                        <span class="badge {% if loop.first %}bg-success{% elif loop.last %}bg-danger{% else %}bg-warning{% endif %}">
+                                            {{ answer }}
+                                        </span>
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="d-grid">
+                        <a href="{{ url_for('audit_run') }}?check_id={{ check.id }}" class="btn btn-primary">
+                            <i class="fas fa-play-circle me-2"></i>
+                            Esegui questo controllo
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-history me-2"></i>
+                        Risultati Recenti
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Target</th>
+                                    <th>Stato</th>
+                                    <th>Score</th>
+                                    <th>Data</th>
+                                    <th>Note</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for result in results %}
+                                <tr class="{% if result.score < 70 %}table-danger{% endif %}">
+                                    {% set target = get_target(result.target_id) %}
+                                    <td>
+                                        <a href="{{ url_for('target_view', target_id=result.target_id) }}">
+                                            {{ target.name if target else "Target sconosciuto" }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <span class="badge {% if result.score >= 70 %}bg-success{% elif result.score >= 50 %}bg-warning{% else %}bg-danger{% endif %}">
+                                            {{ result.status }}
+                                        </span>
+                                    </td>
+                                    <td>{{ result.score|round(1) }}%</td>
+                                    <td>{{ result.timestamp.strftime('%d/%m/%Y %H:%M') }}</td>
+                                    <td>
+                                        {% if result.notes %}
+                                        <button type="button" class="btn btn-sm btn-info" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ result.notes }}">
+                                            <i class="fas fa-info-circle"></i>
+                                        </button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center">Nessun risultato di audit per questo controllo</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>
+                        Statistiche
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="resultChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(function () {
+        $('[data-bs-toggle="tooltip"]').tooltip();
+
+        // Prepara i dati per il grafico
+        var results = {{ results|map(attribute='status')|list|tojson }};
+        var statuses = {};
+
+        // Conta le occorrenze di ogni stato
+        results.forEach(function(status) {
+            if (status in statuses) {
+                statuses[status]++;
+            } else {
+                statuses[status] = 1;
+            }
+        });
+
+        // Prepara i dati per Chart.js
+        var labels = Object.keys(statuses);
+        var data = Object.values(statuses);
+        var colors = [];
+
+        // Assegna i colori in base allo stato
+        labels.forEach(function(label) {
+            if (label && label.toLowerCase().startsWith('sì completo')) {
+                colors.push('#28a745'); // Verde per stati completi
+            } else if (label && label.toLowerCase().startsWith('sì')) {
+                colors.push('#ffc107'); // Giallo per stati parziali
+            } else if (label && label.toLowerCase() === 'no') {
+                colors.push('#dc3545'); // Rosso per stati negativi
+            } else {
+                colors.push('#6c757d'); // Grigio per altri stati
+            }
+        });
+
+        // Crea il grafico
+        var ctx = document.getElementById('resultChart').getContext('2d');
+        var myChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: colors,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}
