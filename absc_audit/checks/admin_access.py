@@ -1,8 +1,8 @@
 """
-Admin Access Checks - Implementazione dei controlli di accesso amministrativo ABSC 5.x.
+Admin Access Checks - Implementation of ABSC 5.x administrative access controls.
 
-Questo modulo implementa i controlli relativi all'accesso amministrativo
-secondo le specifiche ABSC 5.x.
+This module implements the administrative access controls
+according to the ABSC 5.x specifications.
 """
 
 import time
@@ -19,19 +19,19 @@ logger = setup_logger(__name__)
 
 class AdminAccessControlCheck(BaseCheck):
     """
-    Controllo per verificare le politiche di accesso amministrativo (ABSC 5.1.1-5.1.2).
+    Control to verify administrative access policies (ABSC 5.1.1-5.1.2).
 
-    Verifica se sono implementati meccanismi per l'utilizzo delle utenze amministrative
-    solo per le operazioni che richiedono privilegi elevati.
+    Verify whether mechanisms are implemented to use administrative users
+    only for operations that require elevated privileges.
     """
 
     ID = "5.1.1-5.1.2"
-    NAME = "Utilizzo privilegiato delle utenze amministrative"
-    DESCRIPTION = "Verifica dei meccanismi di controllo per l'utilizzo delle utenze amministrative"
-    QUESTION = "Esistono meccanismi per limitare l'utilizzo delle utenze amministrative alle sole operazioni che richiedono privilegi elevati?"
-    POSSIBLE_ANSWERS = ["Sì con controllo accessi", "Sì base", "No"]
+    NAME = "Privileged Use of Administrative Users"
+    DESCRIPTION = "Verify Control Mechanisms for Use of Administrative Users"
+    QUESTION = "Are there any mechanisms to limit the use of administrative users to only those operations that require elevated privileges?"
+    POSSIBLE_ANSWERS = ["Yes with Access Control", "Yes Basic", "No"]
     CATEGORY = "AdminAccess"
-    PRIORITY = 2  # Media priorità
+    PRIORITY = 2
 
     def run(self, target: Target, params: Dict = None) -> Dict:
         """

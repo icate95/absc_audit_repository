@@ -9,6 +9,7 @@ from abc import ABC, abstractmethod
 import datetime
 import logging
 import uuid
+from enum import Enum
 from typing import Dict, List, Optional, Any, Union
 
 from absc_audit.storage.models import Target
@@ -16,14 +17,59 @@ from absc_audit.utils.logging import setup_logger
 
 logger = setup_logger(__name__)
 
+class SeverityLevel(Enum):
+    """Livelli di severità dei controlli di sicurezza"""
+    CRITICAL = 4
+    HIGH = 3
+    MEDIUM = 2
+    LOW = 1
+
+class ScoreComponent:
+    """
+    Componente di scoring per un controllo di sicurezza.
+
+    Rappresenta un sotto-aspetto specifico di un controllo,
+    con un proprio peso e punteggio.
+    """
+    def __init__(
+        self,
+        name: str,
+        weight: float,
+        score: float = 0.0,
+        details: Optional[Dict[str, Any]] = None
+    ):
+        """
+        Inizializza un componente di scoring.
+
+        Args:
+            name: Nome del componente
+            weight: Peso del componente (0.0 - 1.0)
+            score: Punteggio del componente (0.0 - 100.0)
+            details: Dettagli aggiuntivi sul componente
+        """
+        self.name = name
+        self.weight = weight
+        self.score = score
+        self.details = details or {}
 
 class BaseCheck(ABC):
     """
-    Classe base per tutti i controlli di sicurezza ABSC.
+    Classe base per tutti i controlli di sicurezza ABSC con sistema di scoring avanzato.
 
     Questa classe definisce l'interfaccia comune che tutti i controlli
     specifici devono implementare. Fornisce anche funzionalità di base
     come logging e gestione errori.
+    # Attributi
+    ID = None
+    NAME = None
+    DESCRIPTION = None
+    QUESTION = None
+    POSSIBLE_ANSWERS = []
+    CATEGORY = None
+    PRIORITY = 3
+    SEVERITY: SeverityLevel = SeverityLevel.MEDIUM
+    SCORE_COMPONENTS: List[ScoreComponent] = []
+
     """
 
     # Attributi di classe che devono essere definiti nelle sottoclassi
@@ -46,6 +92,77 @@ class BaseCheck(ABC):
             raise ValueError(f"Check description not defined in {self.__class__.__name__}")
 
         self.logger = logger
+        self._scoring_components = self.SCORE_COMPONENTS.copy()
+
+    def add_score_component(
+        self,
+        name: str,
+        weight: float,
+        score: float = 0.0,
+        details: Optional[Dict[str, Any]] = None
+    ):
+        """
+        Aggiunge un componente di scoring al controllo.
+
+        Args:
+            name: Nome del componente
+            weight: Peso del componente
+            score: Punteggio del componente
+            details: Dettagli aggiuntivi
+        """
+        component = ScoreComponent(name, weight, score, details)
+        self._scoring_components.append(component)
+
+    def calculate_weighted_score(self) -> float:
+        """
+        Calcola il punteggio pesato considerando i componenti e la severità.
+
+        Returns:
+            float: Punteggio finale del controllo
+        """
+        if not self._scoring_components:
+            return 0.0
+
+        # Calcolo del punteggio medio dei componenti
+        component_scores = [
+            comp.score * comp.weight
+            for comp in self._scoring_components
+        ]
+
+        # Moltiplicatore di severità
+        severity_multiplier = {
+            SeverityLevel.CRITICAL: 1.5,
+            SeverityLevel.HIGH: 1.3,
+            SeverityLevel.MEDIUM: 1.0,
+            SeverityLevel.LOW: 0.8
+        }
+
+        # Calcolo del punteggio finale
+        weighted_score = sum(component_scores) / sum(
+            comp.weight for comp in self._scoring_components
+        )
+
+        return min(100, weighted_score * severity_multiplier[self.SEVERITY])
+
+    def get_scoring_details(self) -> Dict[str, Any]:
+        """
+        Recupera i dettagli di scoring del controllo.
+
+        Returns:
+            Dict: Dettagli dei componenti di scoring
+        """
+        return {
+            "severity": self.SEVERITY.name,
+            "components": [
+                {
+                    "name": comp.name,
+                    "weight": comp.weight,
+                    "score": comp.score,
+                    "details": comp.details
+                } for comp in self._scoring_components
+            ],
+            "weighted_score": self.calculate_weighted_score()
+        }
 
     @abstractmethod
     def run(self, target: Target, params: Dict = None) -> Dict:
@@ -68,12 +185,15 @@ class BaseCheck(ABC):
         Returns:
             Dizionario base per i risultati
         """
+        result = super().prepare_result()
+
         return {
             'id': str(uuid.uuid4()),
             'check_id': self.ID,
             'timestamp': datetime.datetime.now().isoformat(),
             'status': None,
-            'score': None,
+            'scoring_details': self.get_scoring_details(),
+            'score': self.calculate_weighted_score(),
             'details': {},
             'raw_data': {},
             'notes': ""
@@ -103,6 +223,7 @@ class BaseCheck(ABC):
             return False
 
         return True
+
 
     def calculate_score(self, status: str) -> float:
         """
