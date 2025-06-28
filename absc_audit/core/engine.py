@@ -1,8 +1,8 @@
 """
-Core Engine - Il motore principale del sistema di audit ABSC.
+Core Engine - The main engine of the ABSC Audit System.
 
-Questo modulo implementa il motore centrale responsabile per l'esecuzione
-dei controlli di sicurezza ABSC sugli endpoint target.
+This module implements the central engine responsible for executing
+ABSC security checks on target endpoints.
 """
 
 import concurrent.futures
@@ -22,49 +22,49 @@ logger = setup_logger(__name__)
 
 class AuditEngine:
     """
-    Core engine responsabile per l'esecuzione dei controlli di audit.
+    Core engine responsible for executing audit checks.
 
-    Questa classe coordina l'esecuzione di tutti i controlli di sicurezza
-    su uno o più target, raccoglie i risultati e li passa al ResultManager.
+    This class coordinates the execution of all security checks
+    on one or more targets, collects results, and passes them to the ResultManager.
     """
 
     def __init__(self, settings: Optional[Settings] = None):
         """
-        Inizializza l'audit engine.
+        Initialize the audit engine.
 
         Args:
-            settings: Configurazioni del sistema (opzionale).
+            settings: System configurations (optional).
         """
         self.settings = settings or Settings()
-        self.result_manager = None  # Sarà impostato successivamente
-        self._check_registry = {}  # Registro dei controlli disponibili
+        self.result_manager = None
+        self._check_registry = {}
 
     def register_result_manager(self, result_manager):
         """
-        Registra il result manager per l'elaborazione dei risultati.
+        Register the result manager for processing results.
 
         Args:
-            result_manager: Istanza di ResultManager
+            result_manager: ResultManager instance
         """
         self.result_manager = result_manager
 
     def register_check(self, check_id: str, check_class: type):
         """
-        Registra un controllo nel sistema.
+        Register a check in the system.
 
         Args:
-            check_id: Identificativo ABSC del controllo
-            check_class: Classe che implementa il controllo
+            check_id: ABSC check identifier
+            check_class: Class implementing the check
         """
         # logger.info(f"Registering check {check_id}")
         self._check_registry[check_id] = check_class
 
     def get_available_checks(self) -> Dict[str, type]:
         """
-        Restituisce tutti i controlli disponibili.
+        Returns all available checks.
 
         Returns:
-            Dizionario con ID dei controlli e relative classi
+            Dictionary with check IDs and their classes
         """
         return self._check_registry
 
@@ -73,29 +73,29 @@ class AuditEngine:
                   target: Target,
                   params: Optional[Dict] = None) -> AuditResult:
         """
-        Esegue un singolo controllo su un target.
+        Execute a single check on a target.
 
         Args:
-            check_id: Identificativo ABSC del controllo
-            target: Target su cui eseguire il controllo
-            params: Parametri aggiuntivi per il controllo (opzionale)
+            check_id: ABSC check identifier
+            target: Target to run the check on
+            params: Additional check parameters (optional)
 
         Returns:
-            Risultato dell'audit
+            Audit result
 
         Raises:
-            ValueError: Se il controllo non è disponibile
+            ValueError: If the check is not available
         """
         if check_id not in self._check_registry:
             raise ValueError(f"Check not found: {check_id}")
 
         logger.info(f"Running check {check_id} on target {target.name}")
 
-        # Crea un'istanza del controllo
+        # Create check instance
         check_class = self._check_registry[check_id]
         check_instance = check_class()
 
-        # Prepara il risultato base
+        # Prepare base result
         result = AuditResult(
             id=str(uuid.uuid4()),
             check_id=check_id,
@@ -108,16 +108,16 @@ class AuditEngine:
         )
 
         try:
-            # Esegui il controllo
+            # Run the check
             check_result = check_instance.run(target, params or {})
 
-            # Aggiorna il risultato
+            # Update the result
             result.status = check_result.get('status')
             result.score = check_result.get('score', 0)
             result.details = check_result.get('details', {})
             result.raw_data = check_result.get('raw_data', {})
 
-            # Gestisci eventuali note o commenti
+            # Handle any notes or comments
             result.notes = check_result.get('notes', '')
 
             logger.info(f"Check {check_id} completed with status: {result.status}")
@@ -128,7 +128,7 @@ class AuditEngine:
             result.details = {"error": str(e)}
             result.score = 0
 
-        # Passa il risultato al result manager
+        # Pass the result to result manager
         if self.result_manager:
             self.result_manager.process_result(result)
 
@@ -140,16 +140,16 @@ class AuditEngine:
                    params: Optional[Dict] = None,
                    parallel: bool = False) -> List[AuditResult]:
         """
-        Esegue una serie di controlli su un target.
+        Execute a series of checks on a target.
 
         Args:
-            target: Target su cui eseguire i controlli
-            check_ids: Lista di controlli da eseguire (opzionale, tutti se None)
-            params: Parametri aggiuntivi per i controlli (opzionale)
-            parallel: Se eseguire i controlli in parallelo
+            target: Target to run checks on
+            check_ids: List of checks to execute (optional, all if None)
+            params: Additional check parameters (optional)
+            parallel: Whether to run checks in parallel
 
         Returns:
-            Lista di risultati dell'audit
+            List of audit results
         """
         results = []
         ids_to_run = check_ids or list(self._check_registry.keys())
@@ -157,7 +157,7 @@ class AuditEngine:
         logger.info(f"Running {len(ids_to_run)} checks on target {target.name}")
 
         if parallel and self.settings.max_workers > 1:
-            # Esecuzione parallela
+            # Parallel execution
             with concurrent.futures.ThreadPoolExecutor(max_workers=self.settings.max_workers) as executor:
                 future_to_check = {
                     executor.submit(self.run_check, check_id, target, params): check_id
@@ -172,7 +172,7 @@ class AuditEngine:
                     except Exception as e:
                         logger.error(f"Error in check {check_id}: {str(e)}", exc_info=True)
         else:
-            # Esecuzione sequenziale
+            # Sequential execution
             for check_id in ids_to_run:
                 try:
                     result = self.run_check(check_id, target, params)
@@ -189,22 +189,22 @@ class AuditEngine:
                   parallel_targets: bool = False,
                   parallel_checks: bool = False) -> Dict[str, List[AuditResult]]:
         """
-        Esegue un audit completo su più target.
+        Execute a complete audit on multiple targets.
 
         Args:
-            targets: Lista di target su cui eseguire l'audit
-            check_ids: Lista di controlli da eseguire (opzionale, tutti se None)
-            params: Parametri aggiuntivi per i controlli (opzionale)
-            parallel_targets: Se eseguire i target in parallelo
-            parallel_checks: Se eseguire i controlli in parallelo per ogni target
+            targets: List of targets to run the audit on
+            check_ids: List of checks to execute (optional, all if None)
+            params: Additional check parameters (optional)
+            parallel_targets: Whether to run targets in parallel
+            parallel_checks: Whether to run checks in parallel for each target
 
         Returns:
-            Dizionario con target_id e lista dei risultati
+            Dictionary with target_id and list of results
         """
         audit_results = {}
 
         if parallel_targets and self.settings.max_workers > 1:
-            # Esecuzione parallela dei target
+            # Parallel target execution
             with concurrent.futures.ThreadPoolExecutor(max_workers=self.settings.max_workers) as executor:
                 future_to_target = {
                     executor.submit(self.run_checks, target, check_ids, params, parallel_checks): target
@@ -219,7 +219,7 @@ class AuditEngine:
                     except Exception as e:
                         logger.error(f"Error in target {target.name}: {str(e)}", exc_info=True)
         else:
-            # Esecuzione sequenziale dei target
+            # Sequential target execution
             for target in targets:
                 try:
                     results = self.run_checks(target, check_ids, params, parallel_checks)
@@ -232,16 +232,16 @@ class AuditEngine:
 
 class CheckRegistry:
     """
-    Registro centrale dei controlli disponibili.
+    Central registry of available checks.
 
-    Questa classe gestisce la registrazione e il recupero dei controlli
-    di sicurezza implementati nel sistema.
+    This class manages the registration and retrieval of security
+    checks implemented in the system.
     """
 
     _instance = None
 
     def __new__(cls):
-        """Implementa il pattern Singleton."""
+        """Implements the Singleton pattern."""
         if cls._instance is None:
             cls._instance = super(CheckRegistry, cls).__new__(cls)
             cls._instance._checks = {}
@@ -249,11 +249,11 @@ class CheckRegistry:
 
     def register(self, check_id: str, check_class: type):
         """
-        Registra un controllo nel registro.
+        Register a check in the registry.
 
         Args:
-            check_id: Identificativo ABSC del controllo
-            check_class: Classe che implementa il controllo
+            check_id: ABSC check identifier
+            check_class: Class implementing the check
         """
         if not issubclass(check_class, BaseCheck):
             raise TypeError(f"Check class must be a subclass of BaseCheck")
@@ -262,34 +262,34 @@ class CheckRegistry:
 
     def get_check(self, check_id: str) -> Optional[type]:
         """
-        Recupera una classe di controllo dal registro.
+        Retrieve a check class from the registry.
 
         Args:
-            check_id: Identificativo ABSC del controllo
+            check_id: ABSC check identifier
 
         Returns:
-            Classe di controllo o None se non trovata
+            Check class or None if not found
         """
         return self._checks.get(check_id)
 
     def get_all_checks(self) -> Dict[str, type]:
         """
-        Recupera tutti i controlli registrati.
+        Retrieve all registered checks.
 
         Returns:
-            Dizionario con tutti i controlli
+            Dictionary with all checks
         """
         return self._checks.copy()
 
     def get_checks_by_category(self, category: str) -> Dict[str, type]:
         """
-        Recupera i controlli di una specifica categoria.
+        Retrieve checks from a specific category.
 
         Args:
-            category: Categoria ABSC (es. "1" per inventario)
+            category: ABSC category (e.g. "1" for inventory)
 
         Returns:
-            Dizionario con i controlli della categoria
+            Dictionary with category checks
         """
         return {
             check_id: check_class
@@ -300,32 +300,32 @@ class CheckRegistry:
 
 class CheckFactory:
     """
-    Factory per la creazione di istanze di controllo.
+    Factory for creating check instances.
 
-    Questa classe si occupa di istanziare i controlli in base all'ID ABSC.
+    This class handles instantiating checks based on ABSC ID.
     """
 
     def __init__(self, registry: Optional[CheckRegistry] = None):
         """
-        Inizializza il factory.
+        Initialize the factory.
 
         Args:
-            registry: Registro dei controlli (opzionale)
+            registry: Check registry (optional)
         """
         self.registry = registry or CheckRegistry()
 
     def create_check(self, check_id: str) -> BaseCheck:
         """
-        Crea un'istanza di controllo.
+        Create a check instance.
 
         Args:
-            check_id: Identificativo ABSC del controllo
+            check_id: ABSC check identifier
 
         Returns:
-            Istanza del controllo
+            Check instance
 
         Raises:
-            ValueError: Se il controllo non è disponibile
+            ValueError: If the check is not available
         """
         check_class = self.registry.get_check(check_id)
         if not check_class:
@@ -335,13 +335,13 @@ class CheckFactory:
 
     def create_checks_by_category(self, category: str) -> List[BaseCheck]:
         """
-        Crea istanze di tutti i controlli di una categoria.
+        Create instances of all checks in a category.
 
         Args:
-            category: Categoria ABSC (es. "1" per inventario)
+            category: ABSC category (e.g. "1" for inventory)
 
         Returns:
-            Lista di istanze di controllo
+            List of check instances
         """
         checks = []
         for check_id, check_class in self.registry.get_checks_by_category(category).items():

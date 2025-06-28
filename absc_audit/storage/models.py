@@ -5,10 +5,12 @@ This module implements the data models used by the system
 to represent targets, controls and results.
 """
 
+from dataclasses import dataclass, field
+from typing import List, Dict, Optional, Any
 import datetime
 import uuid
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Union
+import json
+
 
 @dataclass
 class Target:
@@ -74,7 +76,7 @@ class AuditCheck:
     description, question, and possible answers.
     """
 
-    id: str  # ID ABSC (es. "1.1.1-1.1.4")
+    id: str  # ABSC ID (e.g. "1.1.1-1.1.4")
     name: str
     description: str
     question: str
@@ -252,10 +254,10 @@ class ScheduledAudit:
 @dataclass
 class UserAccount:
     """
-    Represents a user account for accessing the system.
+    Represents a scheduled audit.
 
-    This class contains information about a user of the audit system,
-    including credentials, permissions, and personal details.
+    This class contains information about a scheduled audit,
+    including targets, controls, frequency, and status.
     """
 
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
@@ -298,3 +300,216 @@ class UserAccount:
                 data[date_field] = datetime.datetime.fromisoformat(data[date_field])
 
         return cls(**data)
+
+@dataclass
+class NetworkScan:
+    """
+    Represents a single network scan.
+
+    Contains metadata about the scan, including parameters,
+    network ranges scanned, and overall results.
+    """
+
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    name: str = "Network Scan"
+    description: Optional[str] = None
+    start_time: datetime = field(default_factory=datetime.datetime.now)
+    end_time: Optional[datetime] = None
+    network_ranges: List[str] = field(default_factory=list)
+    scan_parameters: Dict = field(default_factory=dict)
+    total_devices: int = 0
+    total_open_ports: int = 0
+    total_vulnerabilities: int = 0
+
+    # Nuovi campi per informazioni di rete globali
+    total_subnets: int = 0  # Numero di subnet rilevate
+    network_topology: Dict[str, Any] = field(default_factory=dict)  # Topologia di rete
+    network_protocols: List[str] = field(default_factory=list)  # Protocolli rilevati
+    network_services_summary: Dict[str, int] = field(default_factory=dict)  # Riepilogo servizi
+
+    # Statistiche di sicurezza avanzate
+    critical_vulnerabilities_count: int = 0
+    medium_vulnerabilities_count: int = 0
+    low_vulnerabilities_count: int = 0
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Converts the report into a serializable dictionary."""
+        return {
+            'id': self.id,
+            'name': self.name,
+            'description': self.description,
+            'start_time': self.start_time.isoformat() if self.start_time else None,
+            'end_time': self.end_time.isoformat() if self.end_time else None,
+            'network_ranges': json.dumps(self.network_ranges),
+            'scan_parameters': json.dumps(self.scan_parameters),
+            'total_devices': self.total_devices,
+            'total_open_ports': self.total_open_ports,
+            'total_vulnerabilities': self.total_vulnerabilities
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'NetworkScan':
+        """Create a report from a dictionary."""
+        if 'start_time' in data and isinstance(data['start_time'], str):
+            data['start_time'] = datetime.datetime.fromisoformat(data['start_time'])
+        if 'end_time' in data and isinstance(data['end_time'], str):
+            data['end_time'] = datetime.datetime.fromisoformat(data['end_time'])
+
+        if isinstance(data.get('network_ranges'), str):
+            data['network_ranges'] = json.loads(data['network_ranges'])
+        if isinstance(data.get('scan_parameters'), str):
+            data['scan_parameters'] = json.loads(data['scan_parameters'])
+
+        return cls(**data)
+
+@dataclass
+class NetworkDevice:
+    """
+    Represents a device discovered during a network scan.
+
+    Contains detailed information about a single device,
+    including services, configurations, and metadata.
+    """
+
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    scan_id: str = ""  # ID della scansione in cui è stato rilevato
+    ip: str = ""
+    mac: Optional[str] = None
+    hostname: Optional[str] = None
+    os: Optional[str] = None
+    os_version: Optional[str] = None
+    services: List[Dict[str, Any]] = field(default_factory=list)
+    is_alive: bool = False
+    reachable_protocols: List[str] = field(default_factory=list)
+    potential_vulnerabilities: List[Dict[str, Any]] = field(default_factory=list)
+    open_ports: List[int] = field(default_factory=list)
+    closed_ports: List[int] = field(default_factory=list)
+    filtered_ports: List[int] = field(default_factory=list)
+    additional_info: Dict[str, Any] = field(default_factory=dict)
+    first_seen: datetime = field(default_factory=datetime.datetime.now)
+    last_seen: datetime = field(default_factory=datetime.datetime.now)
+
+    # Informazioni di rete aggiuntive
+    subnet: Optional[str] = None  # Subnet del dispositivo
+    default_gateway: Optional[str] = None  # Gateway predefinito
+    dns_servers: List[str] = field(default_factory=list)  # Server DNS
+
+    # Dettagli di configurazione di rete
+    network_interfaces: List[Dict[str, Any]] = field(default_factory=list)
+    # Esempio di struttura:
+    # [
+    #     {
+    #         'name': 'eth0',
+    #         'ip': '192.168.1.100',
+    #         'mac': '00:11:22:33:44:55',
+    #         'type': 'ethernet',
+    #         'status': 'up'
+    #     }
+    # ]
+
+    # Informazioni sul traffico di rete
+    traffic_profile: Dict[str, Any] = field(default_factory=dict)
+    # Esempio:
+    # {
+    #     'total_bytes_sent': 1024000,
+    #     'total_bytes_received': 2048000,
+    #     'active_connections': 10,
+    #     'most_used_ports': [80, 443, 22]
+    # }
+
+    # Classificazione del dispositivo
+    device_type: Optional[str] = None  # server, workstation, iot, network_device
+    device_role: Optional[str] = None  # web_server, database, router, etc.
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Converts the report into a serializable dictionary."""
+        return {
+            'id': self.id,
+            'scan_id': self.scan_id,
+            'ip': self.ip,
+            'mac': self.mac,
+            'hostname': self.hostname,
+            'os': self.os,
+            'os_version': self.os_version,
+            'services': json.dumps(self.services),
+            'is_alive': self.is_alive,
+            'reachable_protocols': json.dumps(self.reachable_protocols),
+            'potential_vulnerabilities': json.dumps(self.potential_vulnerabilities),
+            'open_ports': json.dumps(self.open_ports),
+            'closed_ports': json.dumps(self.closed_ports),
+            'filtered_ports': json.dumps(self.filtered_ports),
+            'additional_info': json.dumps(self.additional_info),
+            'first_seen': self.first_seen.isoformat(),
+            'last_seen': self.last_seen.isoformat()
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'NetworkDevice':
+        """Create a report from a dictionary."""
+        if 'first_seen' in data and isinstance(data['first_seen'], str):
+            data['first_seen'] = datetime.datetime.fromisoformat(data['first_seen'])
+        if 'last_seen' in data and isinstance(data['last_seen'], str):
+            data['last_seen'] = datetime.datetime.fromisoformat(data['last_seen'])
+
+        deserialize_fields = [
+            'services', 'reachable_protocols',
+            'potential_vulnerabilities', 'open_ports',
+            'closed_ports', 'filtered_ports', 'additional_info'
+        ]
+
+        for field_name in deserialize_fields:
+            if field_name in data and isinstance(data[field_name], str):
+                try:
+                    data[field_name] = json.loads(data[field_name])
+                except (json.JSONDecodeError, TypeError):
+                    # If deserialization fails, use the original value
+                    pass
+
+        return cls(**data)
+
+    def update_from_scan_result(self, scan_result: Dict[str, Any]):
+        """
+        Updates the NetworkDevice object with the results of a scan.
+        Args:
+            scan_result: Dictionary containing the scan results
+        """
+        self.ip = scan_result.get('ip', self.ip)
+        self.mac = scan_result.get('mac', self.mac)
+        self.hostname = scan_result.get('hostname', self.hostname)
+
+        os_details = scan_result.get('os_details', {})
+        self.os = os_details.get('name', self.os)
+        self.os_version = os_details.get('version', self.os_version)
+
+        if 'services' in scan_result:
+            existing_services = {
+                (s.get('port'), s.get('service')) for s in self.services
+            }
+            for service in scan_result['services']:
+                service_key = (service.get('port'), service.get('service'))
+                if service_key not in existing_services:
+                    self.services.append(service)
+                    existing_services.add(service_key)
+
+        port_types = ['open_ports', 'closed_ports', 'filtered_ports']
+        for port_type in port_types:
+            ports = scan_result.get(port_type, [])
+            existing_ports = getattr(self, port_type)
+            for port in ports:
+                if port not in existing_ports:
+                    existing_ports.append(port)
+
+        if 'potential_vulnerabilities' in scan_result:
+            existing_vulns = {
+                (v.get('port'), v.get('service'))
+                for v in self.potential_vulnerabilities
+            }
+            for vuln in scan_result.get('potential_vulnerabilities', []):
+                vuln_key = (vuln.get('port'), vuln.get('service'))
+                if vuln_key not in existing_vulns:
+                    self.potential_vulnerabilities.append(vuln)
+                    existing_vulns.add(vuln_key)
+
+        self.last_seen = datetime.datetime.now()
+
+        self.additional_info.update(scan_result.get('additional_info', {}))

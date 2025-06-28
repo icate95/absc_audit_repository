@@ -1,9 +1,8 @@
 """
-SQLite Storage Backend - SQLite based storage backend implementation.
+SQLite Storage Module for the ABSC Audit System.
 
-This module implements the data persistence backend using SQLite
-to store targets, controls and audit results.
-     """
+Implements the data persistence backend using SQLite.
+"""
 
 import json
 import os
@@ -13,22 +12,21 @@ import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Union, Tuple
 
-from absc_audit.storage.models import Target, AuditCheck, AuditResult, AuditReport, ScheduledAudit, UserAccount
+from absc_audit.storage.models import Target, AuditCheck, AuditResult, AuditReport, ScheduledAudit, UserAccount, NetworkScan, NetworkDevice
 from absc_audit.config.settings import Settings
 from absc_audit.utils.logging import setup_logger
 
 logger = setup_logger(__name__)
 
-
 class SQLiteStorage:
     """
-   SQLite based storage backend.
+    SQLite based storage backend.
 
     This class manages data persistence using a SQLite database.
     It supports all CRUD operations for the system data models.
     """
 
-    # Thread local storage per connessioni thread-specifiche
+    # Thread-local storage for thread-specific connections
     _thread_local = threading.local()
 
     def __init__(self, settings: Optional[Settings] = None, db_path: Optional[str] = None):
@@ -42,10 +40,10 @@ class SQLiteStorage:
         self.settings = settings or Settings()
         self.db_path = db_path or self.settings.sqlite_path or "audit_data.db"
 
-        # Assicura che la directory esista
+        # Ensure the directory exists
         os.makedirs(os.path.dirname(os.path.abspath(self.db_path)), exist_ok=True)
 
-        # Inizializza il database
+        # Initialize the database
         self._initialize_db()
 
     def _initialize_db(self):
@@ -150,7 +148,51 @@ class SQLiteStorage:
             """
         }
 
+        network_tables = {
+            "network_scans": """
+                    CREATE TABLE IF NOT EXISTS network_scans (
+                        id TEXT PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        description TEXT,
+                        start_time DATETIME NOT NULL,
+                        end_time DATETIME,
+                        network_ranges TEXT,
+                        scan_parameters TEXT,
+                        total_devices INTEGER DEFAULT 0,
+                        total_open_ports INTEGER DEFAULT 0,
+                        total_vulnerabilities INTEGER DEFAULT 0
+                    )
+                    """,
+            "network_devices": """
+                    CREATE TABLE IF NOT EXISTS network_devices (
+                        id TEXT PRIMARY KEY,
+                        scan_id TEXT,
+                        ip TEXT,
+                        mac TEXT,
+                        hostname TEXT,
+                        os TEXT,
+                        os_version TEXT,
+                        services TEXT,
+                        is_alive BOOLEAN,
+                        reachable_protocols TEXT,
+                        potential_vulnerabilities TEXT,
+                        open_ports TEXT,
+                        closed_ports TEXT,
+                        filtered_ports TEXT,
+                        additional_info TEXT,
+                        first_seen DATETIME,
+                        last_seen DATETIME,
+                        FOREIGN KEY(scan_id) REFERENCES network_scans(id)
+                    )
+                    """
+        }
+
+        # Unisci le tabelle
+        tables.update(network_tables)
+
+        cursor = self.conn.cursor()
         for table_name, table_schema in tables.items():
+            logger.info(f"{table_name}")
             try:
                 self.cursor.execute(table_schema)
             except sqlite3.Error as e:
@@ -163,7 +205,10 @@ class SQLiteStorage:
             "CREATE INDEX IF NOT EXISTS idx_targets_name ON targets(name)",
             "CREATE INDEX IF NOT EXISTS idx_targets_hostname ON targets(hostname)",
             "CREATE INDEX IF NOT EXISTS idx_targets_ip_address ON targets(ip_address)",
-            "CREATE INDEX IF NOT EXISTS idx_user_accounts_username ON user_accounts(username)"
+            "CREATE INDEX IF NOT EXISTS idx_user_accounts_username ON user_accounts(username)",
+            "CREATE INDEX IF NOT EXISTS idx_network_devices_scan_id ON network_devices(scan_id)",
+            "CREATE INDEX IF NOT EXISTS idx_network_devices_ip ON network_devices(ip)",
+            "CREATE INDEX IF NOT EXISTS idx_network_devices_hostname ON network_devices(hostname)",
         ]
 
         for index in indexes:
@@ -195,6 +240,8 @@ class SQLiteStorage:
             # Local references for your convenience
             self.conn = self._thread_local.conn
             self.cursor = self._thread_local.cursor
+
+            return self.conn, self.cursor
         except sqlite3.Error as e:
             logger.error(f"Error connecting to SQLite database: {str(e)}")
             raise
@@ -1460,6 +1507,216 @@ class SQLiteStorage:
             raise
         finally:
             self._disconnect()
+
+    # ----- Network Methods -----
+
+    def save_network_scan(self, network_scan: NetworkScan):
+        """
+        Save a network scan to the database.
+
+        Args:
+            network_scan: NetworkScan instance to save
+        """
+        self._connect()
+
+        try:
+            scan_data = network_scan.to_dict()
+
+            query = '''
+            INSERT OR REPLACE INTO network_scans (
+                id, name, description, start_time, end_time, 
+                network_ranges, scan_parameters, 
+                total_devices, total_open_ports, total_vulnerabilities
+            ) VALUES (
+                :id, :name, :description, :start_time, :end_time, 
+                :network_ranges, :scan_parameters, 
+                :total_devices, :total_open_ports, :total_vulnerabilities
+            )
+            '''
+
+            self.cursor.execute(query, scan_data)
+            self.conn.commit()
+
+        except sqlite3.Error as e:
+            logger.error(f"Error saving network scan: {e}")
+            self.conn.rollback()
+            raise
+
+    def update_network_scan(self, network_scan: NetworkScan):
+        """
+        Update an existing network scan.
+
+        Args:
+            network_scan: NetworkScan instance to update
+        """
+        self._connect()
+
+        try:
+            scan_data = network_scan.to_dict()
+
+            query = '''
+            UPDATE network_scans SET
+                name = :name,
+                description = :description,
+                end_time = :end_time,
+                total_devices = :total_devices,
+                total_open_ports = :total_open_ports,
+                total_vulnerabilities = :total_vulnerabilities
+            WHERE id = :id
+            '''
+
+            self.cursor.execute(query, scan_data)
+            self.conn.commit()
+
+        except sqlite3.Error as e:
+            logger.error(f"Error updating network scan: {e}")
+            self.conn.rollback()
+            raise
+
+    def get_network_scan(self, scan_id: str) -> Optional[NetworkScan]:
+        """
+        Retrieve a network scan from the database.
+
+        Args:
+            scan_id: ID of the scan to retrieve
+
+        Returns:
+            NetworkScan instance or None if not found
+        """
+        self._connect()
+
+        try:
+            query = 'SELECT * FROM network_scans WHERE id = ?'
+            self.cursor.execute(query, (scan_id,))
+
+            row = self.cursor.fetchone()
+
+            if row:
+                scan_dict = dict(zip([col[0] for col in self.cursor.description], row))
+                return NetworkScan.from_dict(scan_dict)
+
+            return None
+
+        except sqlite3.Error as e:
+            logger.error(f"Error retrieving network scan: {e}")
+            raise
+
+    def save_network_devices(self, devices: List[NetworkDevice]):
+        """
+        Save a list of network devices to the database.
+
+        Args:
+            devices: List of NetworkDevice instances to save
+        """
+        self._connect()
+
+        try:
+            query = '''
+            INSERT OR REPLACE INTO network_devices (
+                id, scan_id, ip, mac, hostname, os, os_version,
+                services, is_alive, reachable_protocols, 
+                potential_vulnerabilities, open_ports, 
+                closed_ports, filtered_ports, additional_info,
+                first_seen, last_seen
+            ) VALUES (
+                :id, :scan_id, :ip, :mac, :hostname, :os, :os_version,
+                :services, :is_alive, :reachable_protocols, 
+                :potential_vulnerabilities, :open_ports, 
+                :closed_ports, :filtered_ports, :additional_info,
+                :first_seen, :last_seen
+            )
+            '''
+
+            for device in devices:
+                device_data = device.to_dict()
+                self.cursor.execute(query, device_data)
+
+            self.conn.commit()
+
+        except sqlite3.Error as e:
+            logger.error(f"Error saving network devices: {e}")
+            self.conn.rollback()
+            raise
+
+    def get_network_devices(self,
+                            scan_id: Optional[str] = None,
+                            ip: Optional[str] = None,
+                            hostname: Optional[str] = None,
+                            limit: int = 100,
+                            offset: int = 0) -> List[NetworkDevice]:
+        """
+        Retrieve network devices with filtering options.
+
+        Args:
+            scan_id: Filter by scan ID
+            ip: Filter by IP address
+            hostname: Filter by hostname
+            limit: Maximum number of results
+            offset: Offset for pagination
+
+        Returns:
+            List of network devices
+        """
+        self._connect()
+
+        try:
+            conditions = []
+            params = []
+
+            if scan_id:
+                conditions.append('scan_id = ?')
+                params.append(scan_id)
+
+            if ip:
+                conditions.append('ip = ?')
+                params.append(ip)
+
+            if hostname:
+                conditions.append('hostname LIKE ?')
+                params.append(f'%{hostname}%')
+
+            where_clause = 'WHERE ' + ' AND '.join(conditions) if conditions else ''
+            query = f'''
+            SELECT * FROM network_devices 
+            {where_clause}
+            LIMIT ? OFFSET ?
+            '''
+
+            params.extend([limit, offset])
+
+            self.cursor.execute(query, params)
+
+            devices = []
+            for row in self.cursor.fetchall():
+                device_dict = dict(zip([col[0] for col in self.cursor.description], row))
+                devices.append(NetworkDevice.from_dict(device_dict))
+
+            return devices
+
+        except sqlite3.Error as e:
+            logger.error(f"Error retrieving network devices: {e}")
+            raise
+
+    def delete_network_scan(self, scan_id: str):
+        """
+        Delete a network scan and its related devices.
+
+        Args:
+            scan_id: ID of the scan to delete
+        """
+        self._connect()
+
+        try:
+            self.cursor.execute('DELETE FROM network_devices WHERE scan_id = ?', (scan_id,))
+
+            self.cursor.execute('DELETE FROM network_scans WHERE id = ?', (scan_id,))
+
+            self.conn.commit()
+
+        except sqlite3.Error as e:
+            logger.error(f"Error deleting network scan: {e}")
+            self.conn.rollback()
+            raise
 
     #  ----- Init db Methods -----
 
