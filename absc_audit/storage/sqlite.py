@@ -1,8 +1,8 @@
 """
-     SQLite Storage Backend - Implementazione del backend di storage basato su SQLite.
+SQLite Storage Backend - SQLite based storage backend implementation.
 
-     Questo modulo implementa il backend di persistenza dati utilizzando SQLite
-     per archiviare target, controlli e risultati degli audit.
+This module implements the data persistence backend using SQLite
+to store targets, controls and audit results.
      """
 
 import json
@@ -22,10 +22,10 @@ logger = setup_logger(__name__)
 
 class SQLiteStorage:
     """
-    Backend di storage basato su SQLite.
+   SQLite based storage backend.
 
-    Questa classe gestisce la persistenza dei dati utilizzando un database SQLite.
-    Supporta tutte le operazioni CRUD per i modelli dati del sistema.
+    This class manages data persistence using a SQLite database.
+    It supports all CRUD operations for the system data models.
     """
 
     # Thread local storage per connessioni thread-specifiche
@@ -33,11 +33,11 @@ class SQLiteStorage:
 
     def __init__(self, settings: Optional[Settings] = None, db_path: Optional[str] = None):
         """
-        Inizializza il backend di storage SQLite.
+        Initializes the SQLite storage backend.
 
         Args:
-            settings: Configurazioni del sistema (opzionale)
-            db_path: Percorso del file di database (opzionale)
+        settings: System configurations (optional)
+        db_path: Database file path (optional)
         """
         self.settings = settings or Settings()
         self.db_path = db_path or self.settings.sqlite_path or "audit_data.db"
@@ -49,10 +49,9 @@ class SQLiteStorage:
         self._initialize_db()
 
     def _initialize_db(self):
-        """Inizializza il database creando tabelle se non esistono."""
+        """Initialize the database by creating tables if they do not exist."""
         self._connect()
 
-        # Definizione delle tabelle
         tables = {
             "targets": """
                 CREATE TABLE IF NOT EXISTS targets (
@@ -151,14 +150,12 @@ class SQLiteStorage:
             """
         }
 
-        # Crea le tabelle
         for table_name, table_schema in tables.items():
             try:
                 self.cursor.execute(table_schema)
             except sqlite3.Error as e:
                 logger.error(f"Error creating table {table_name}: {str(e)}")
 
-        # Crea indici per migliorare le performance
         indexes = [
             "CREATE INDEX IF NOT EXISTS idx_audit_results_check_id ON audit_results(check_id)",
             "CREATE INDEX IF NOT EXISTS idx_audit_results_target_id ON audit_results(target_id)",
@@ -180,22 +177,22 @@ class SQLiteStorage:
 
     def _connect(self):
         """
-        Stabilisce una connessione al database specifica per il thread corrente.
+        Establishes a database connection specific to the current thread.
 
-        Ogni thread avrà la sua connessione dedicata al database.
+        Each thread will have its own dedicated database connection.
         """
         try:
-            # Verifica se il thread corrente ha già una connessione
+            # Check if the current thread already has a connection
             if not hasattr(self._thread_local, 'conn') or self._thread_local.conn is None:
-                # Crea una nuova connessione per questo thread
+                # Create a new connection for this thread
                 self._thread_local.conn = sqlite3.connect(self.db_path)
-                # Abilita il supporto alle foreign key
+                # Enable foreign key support
                 self._thread_local.conn.execute("PRAGMA foreign_keys = ON")
-                # Configura il ritorno di dict invece di tuple
+                # Configure return of dict instead of tuple
                 self._thread_local.conn.row_factory = sqlite3.Row
                 self._thread_local.cursor = self._thread_local.conn.cursor()
 
-            # Riferimenti locali per comodità
+            # Local references for your convenience
             self.conn = self._thread_local.conn
             self.cursor = self._thread_local.cursor
         except sqlite3.Error as e:
@@ -204,19 +201,19 @@ class SQLiteStorage:
 
     def _disconnect(self):
         """
-        "Disconnette" dal database.
+        "Disconnect" from the database.
 
-        In realtà manteniamo la connessione aperta per il thread,
-        ma resettiamo i riferimenti locali.
+        We actually keep the connection open for the thread,
+        but reset the local references.
         """
         self.conn = None
         self.cursor = None
 
     def close_all(self):
         """
-        Chiude tutte le connessioni al database.
+        Closes all database connections.
 
-        Questo metodo dovrebbe essere chiamato quando l'applicazione termina.
+        This method should be called when the application terminates.
         """
         try:
             if hasattr(self._thread_local, 'conn') and self._thread_local.conn:
@@ -227,25 +224,25 @@ class SQLiteStorage:
             logger.error(f"Error closing SQLite connection: {str(e)}")
 
     def _dict_to_json(self, data: Dict) -> str:
-        """Converte un dizionario in una stringa JSON."""
+        """Converts a dictionary to a JSON string."""
         if not data:
             return "{}"
         return json.dumps(data, default=str)
 
     def _json_to_dict(self, json_str: str) -> Dict:
-        """Converte una stringa JSON in un dizionario."""
+        """Converts a JSON string to a dictionary."""
         if not json_str or json_str == "{}":
             return {}
         return json.loads(json_str)
 
     def _list_to_json(self, data: List) -> str:
-        """Converte una lista in una stringa JSON."""
+        """Converts a list to a JSON string."""
         if not data:
             return "[]"
         return json.dumps(data, default=str)
 
     def _json_to_list(self, json_str: str) -> List:
-        """Converte una stringa JSON in una lista."""
+        """Converts a JSON string to a list."""
         if not json_str or json_str == "[]":
             return []
         return json.loads(json_str)
@@ -254,21 +251,19 @@ class SQLiteStorage:
 
     def save_target(self, target: Target) -> Target:
         """
-        Salva un target nel database.
+        Save a target to the database.
 
         Args:
-            target: Target da salvare
+        target: Target to save
 
         Returns:
-            Target salvato
+        Target saved
         """
         self._connect()
 
         try:
-            # Aggiorna il timestamp di modifica
             target.updated_at = datetime.datetime.now()
 
-            # Prepara i dati da salvare
             data = (
                 target.id,
                 target.name,
@@ -284,14 +279,12 @@ class SQLiteStorage:
                 target.updated_at.isoformat()
             )
 
-            # Query di insert/update
             query = """
                 INSERT OR REPLACE INTO targets
                 (id, name, hostname, ip_address, os_type, os_version, description, "group", tags, attributes, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
 
-            # Esegui la query
             self.cursor.execute(query, data)
             self.conn.commit()
 
@@ -308,62 +301,53 @@ class SQLiteStorage:
 
     def get_target(self, target_id: str) -> Optional[Target]:
         """
-        Recupera un target dal database.
+        Retrieves a target from the database.
 
         Args:
-            target_id: ID del target da recuperare
+        target_id: ID of the target to retrieve
 
         Returns:
-            Target recuperato o None se non trovato
+        Target retrieved or None if not found
         """
         self._connect()
 
         try:
-            # Query per recuperare il target
             query = "SELECT * FROM targets WHERE id = ?"
 
-            # Esegui la query
             self.cursor.execute(query, (target_id,))
             row = self.cursor.fetchone()
 
             if not row:
                 return None
 
-            # Converti il risultato in un dizionario
             target_dict = dict(row)
 
-            # Converti le liste e i dizionari da JSON
             target_dict["tags"] = self._json_to_list(target_dict["tags"])
             target_dict["attributes"] = self._json_to_dict(target_dict["attributes"])
 
-            # Crea l'oggetto Target
             return Target.from_dict(target_dict)
 
         except sqlite3.Error as e:
             logger.error(f"Error retrieving target {target_id}: {str(e)}")
             raise
         finally:
-            # Non chiudiamo la connessione
             pass
 
     def get_all_targets(self) -> List[Target]:
         """
-        Recupera tutti i target dal database.
+        Retrieve all targets from the database.
 
         Returns:
-            Lista di tutti i target
+        List of all targets
         """
         self._connect()
 
         try:
-            # Query per recuperare tutti i target
             query = "SELECT * FROM targets ORDER BY name"
 
-            # Esegui la query
             self.cursor.execute(query)
             rows = self.cursor.fetchall()
 
-            # Converti i risultati in oggetti Target
             targets = []
             for row in rows:
                 target_dict = dict(row)
@@ -381,25 +365,22 @@ class SQLiteStorage:
 
     def get_targets_by_group(self, group: str) -> List[Target]:
         """
-        Recupera i target di un gruppo specifico.
+        Gets targets for a specific group.
 
         Args:
-            group: Nome del gruppo
+        group: Group name
 
         Returns:
-            Lista di target nel gruppo
+        List of targets in the group
         """
         self._connect()
 
         try:
-            # Query per recuperare i target del gruppo
             query = "SELECT * FROM targets WHERE \"group\" = ? ORDER BY name"
 
-            # Esegui la query
             self.cursor.execute(query, (group,))
             rows = self.cursor.fetchall()
 
-            # Converti i risultati in oggetti Target
             targets = []
             for row in rows:
                 target_dict = dict(row)
@@ -417,31 +398,26 @@ class SQLiteStorage:
 
     def get_targets_by_tag(self, tag: str) -> List[Target]:
         """
-        Recupera i target con un tag specifico.
+        Gets targets with a specific tag.
 
         Args:
-            tag: Tag da cercare
+        tag: Tag to search for
 
         Returns:
-            Lista di target con il tag
+        List of targets with the tag
         """
         self._connect()
 
         try:
-            # Query per recuperare i target con il tag
-            # Utilizziamo LIKE con il tag in formato JSON
             query = "SELECT * FROM targets WHERE tags LIKE ? ORDER BY name"
 
-            # Esegui la query
             self.cursor.execute(query, (f'%"{tag}"%',))
             rows = self.cursor.fetchall()
 
-            # Converti i risultati in oggetti Target
             targets = []
             for row in rows:
                 target_dict = dict(row)
                 tags = self._json_to_list(target_dict["tags"])
-                # Verifica che il tag sia effettivamente presente (non solo in una stringa)
                 if tag in tags:
                     target_dict["tags"] = tags
                     target_dict["attributes"] = self._json_to_dict(target_dict["attributes"])
@@ -457,25 +433,22 @@ class SQLiteStorage:
 
     def delete_target(self, target_id: str) -> bool:
         """
-        Elimina un target dal database.
+        Delete a target from the database.
 
         Args:
-            target_id: ID del target da eliminare
+            target_id: ID of the target to delete
 
         Returns:
-            True se l'eliminazione ha avuto successo, False altrimenti
+            True if the deletion was successful, False otherwise
         """
         self._connect()
 
         try:
-            # Query per eliminare il target
             query = "DELETE FROM targets WHERE id = ?"
 
-            # Esegui la query
             self.cursor.execute(query, (target_id,))
             self.conn.commit()
 
-            # Verifica se è stato eliminato qualcosa
             return self.cursor.rowcount > 0
 
         except sqlite3.Error as e:
@@ -489,18 +462,17 @@ class SQLiteStorage:
 
     def save_check(self, check: AuditCheck) -> AuditCheck:
         """
-        Salva un controllo nel database.
+        Saves a control to the database.
 
         Args:
-            check: Controllo da salvare
+        check: Control to save
 
         Returns:
-            Controllo salvato
+        Control saved
         """
         self._connect()
 
         try:
-            # Prepara i dati da salvare
             data = (
                 check.id,
                 check.name,
@@ -513,14 +485,12 @@ class SQLiteStorage:
                 self._dict_to_json(check.params)
             )
 
-            # Query di insert/update
             query = """
                 INSERT OR REPLACE INTO audit_checks
                 (id, name, description, question, possible_answers, category, priority, enabled, params)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
 
-            # Esegui la query
             self.cursor.execute(query, data)
             self.conn.commit()
 
@@ -535,36 +505,31 @@ class SQLiteStorage:
 
     def get_check(self, check_id: str) -> Optional[AuditCheck]:
         """
-        Recupera un controllo dal database.
+        Retrieves a control from the database.
 
         Args:
-            check_id: ID del controllo da recuperare
+        check_id: ID of the control to retrieve
 
         Returns:
-            Controllo recuperato o None se non trovato
+        Control retrieved or None if not found
         """
         self._connect()
 
         try:
-            # Query per recuperare il controllo
             query = "SELECT * FROM audit_checks WHERE id = ?"
 
-            # Esegui la query
             self.cursor.execute(query, (check_id,))
             row = self.cursor.fetchone()
 
             if not row:
                 return None
 
-            # Converti il risultato in un dizionario
             check_dict = dict(row)
 
-            # Converti boolean e liste
             check_dict["enabled"] = bool(check_dict["enabled"])
             check_dict["possible_answers"] = self._json_to_list(check_dict["possible_answers"])
             check_dict["params"] = self._json_to_dict(check_dict["params"])
 
-            # Crea l'oggetto AuditCheck
             return AuditCheck.from_dict(check_dict)
 
         except sqlite3.Error as e:
@@ -573,24 +538,21 @@ class SQLiteStorage:
         finally:
             self._disconnect()
 
-    def get_all_checks(self) -> List[AuditCheck]:
+    def get_all_checks(self, id) -> List[AuditCheck]:
         """
-        Recupera tutti i controlli dal database.
+        Retrieve all controls from the database.
 
         Returns:
-            Lista di tutti i controlli
+        List of all controls
         """
         self._connect()
 
         try:
-            # Query per recuperare tutti i controlli
             query = "SELECT * FROM audit_checks ORDER BY id"
 
-            # Esegui la query
             self.cursor.execute(query)
             rows = self.cursor.fetchall()
 
-            # Converti i risultati in oggetti AuditCheck
             checks = []
             for row in rows:
                 check_dict = dict(row)
@@ -609,25 +571,22 @@ class SQLiteStorage:
 
     def get_checks_by_category(self, category: str) -> List[AuditCheck]:
         """
-        Recupera i controlli di una categoria specifica.
+        Gets controls from a specific category.
 
         Args:
-            category: Categoria da cercare
+        category: Category to search
 
         Returns:
-            Lista di controlli nella categoria
+        List of controls in category
         """
         self._connect()
 
         try:
-            # Query per recuperare i controlli della categoria
             query = "SELECT * FROM audit_checks WHERE category = ? ORDER BY id"
 
-            # Esegui la query
             self.cursor.execute(query, (category,))
             rows = self.cursor.fetchall()
 
-            # Converti i risultati in oggetti AuditCheck
             checks = []
             for row in rows:
                 check_dict = dict(row)
@@ -646,13 +605,13 @@ class SQLiteStorage:
 
     def get_checks_by_priority(self, priority: int) -> List[AuditCheck]:
         """
-        Recupera i controlli con una priorità specifica.
+        Gets controls with a specific priority.
 
         Args:
-            priority: Priorità da cercare (1=alta, 2=media, 3=bassa)
+        priority: Priority to search (1=high, 2=medium, 3=low)
 
         Returns:
-            Lista di controlli con la priorità specificata
+        List of controls with the specified priority
         """
         self._connect()
 
@@ -683,25 +642,22 @@ class SQLiteStorage:
 
     def delete_check(self, check_id: str) -> bool:
         """
-        Elimina un controllo dal database.
+        Deletes a control from the database.
 
         Args:
-            check_id: ID del controllo da eliminare
+        check_id: ID of the control to delete
 
         Returns:
-            True se l'eliminazione ha avuto successo, False altrimenti
+        True if the deletion was successful, False otherwise
         """
         self._connect()
 
         try:
-            # Query per eliminare il controllo
             query = "DELETE FROM audit_checks WHERE id = ?"
 
-            # Esegui la query
             self.cursor.execute(query, (check_id,))
             self.conn.commit()
 
-            # Verifica se è stato eliminato qualcosa
             return self.cursor.rowcount > 0
 
         except sqlite3.Error as e:
@@ -711,22 +667,21 @@ class SQLiteStorage:
         finally:
             self._disconnect()
 
-        # ----- Audit Result Methods -----
+    # ----- Audit Results Methods -----
 
     def save_result(self, result: AuditResult) -> AuditResult:
         """
-        Salva un risultato di audit nel database.
+        Saves an audit result to the database.
 
         Args:
-            result: Risultato da salvare
+        result: Result to save
 
         Returns:
-            Risultato salvato
+        Result saved
         """
         self._connect()
 
         try:
-            # Prepara i dati da salvare
             data = (
                 result.id,
                 result.check_id,
@@ -740,14 +695,12 @@ class SQLiteStorage:
                 result.notes
             )
 
-            # Query di insert/update
             query = """
                     INSERT OR REPLACE INTO audit_results
                     (id, check_id, target_id, timestamp, processed_at, status, score, details, raw_data, notes)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """
 
-            # Esegui la query
             self.cursor.execute(query, data)
             self.conn.commit()
 
@@ -762,35 +715,30 @@ class SQLiteStorage:
 
     def get_result(self, result_id: str) -> Optional[AuditResult]:
         """
-        Recupera un risultato di audit dal database.
+        Retrieves an audit result from the database.
 
         Args:
-            result_id: ID del risultato da recuperare
+        result_id: ID of the result to retrieve
 
         Returns:
-            Risultato recuperato o None se non trovato
+        Result retrieved or None if not found
         """
         self._connect()
 
         try:
-            # Query per recuperare il risultato
             query = "SELECT * FROM audit_results WHERE id = ?"
 
-            # Esegui la query
             self.cursor.execute(query, (result_id,))
             row = self.cursor.fetchone()
 
             if not row:
                 return None
 
-            # Converti il risultato in un dizionario
             result_dict = dict(row)
 
-            # Converti i dizionari da JSON
             result_dict["details"] = self._json_to_dict(result_dict["details"])
             result_dict["raw_data"] = self._json_to_dict(result_dict["raw_data"])
 
-            # Crea l'oggetto AuditResult
             return AuditResult.from_dict(result_dict)
 
         except sqlite3.Error as e:
@@ -801,25 +749,22 @@ class SQLiteStorage:
 
     def get_results_by_check(self, check_id: str) -> List[AuditResult]:
         """
-        Recupera i risultati per un controllo specifico.
+        Gets results for a specific check.
 
         Args:
-            check_id: ID del controllo
+        check_id: check ID
 
         Returns:
-            Lista di risultati per il controllo
+        List of results for the check
         """
         self._connect()
 
         try:
-            # Query per recuperare i risultati del controllo
             query = "SELECT * FROM audit_results WHERE check_id = ? ORDER BY timestamp DESC"
 
-            # Esegui la query
             self.cursor.execute(query, (check_id,))
             rows = self.cursor.fetchall()
 
-            # Converti i risultati in oggetti AuditResult
             results = []
             for row in rows:
                 result_dict = dict(row)
@@ -837,25 +782,22 @@ class SQLiteStorage:
 
     def get_results_by_target(self, target_id: str) -> List[AuditResult]:
         """
-        Recupera i risultati per un target specifico.
+        Retrieve results for a specific target.
 
         Args:
-            target_id: ID del target
+            target_id: ID of the target
 
         Returns:
-            Lista di risultati per il target
+            List of results for the target
         """
         self._connect()
 
         try:
-            # Query per recuperare i risultati del target
             query = "SELECT * FROM audit_results WHERE target_id = ? ORDER BY timestamp DESC"
 
-            # Esegui la query
             self.cursor.execute(query, (target_id,))
             rows = self.cursor.fetchall()
 
-            # Converti i risultati in oggetti AuditResult
             results = []
             for row in rows:
                 result_dict = dict(row)
@@ -873,18 +815,17 @@ class SQLiteStorage:
 
     def get_latest_results(self, target_id: Optional[str] = None) -> List[AuditResult]:
         """
-        Recupera i risultati più recenti, opzionalmente filtrati per target.
+        Gets the most recent results, optionally filtered by target.
 
         Args:
-            target_id: ID del target (opzionale)
+        target_id: ID of the target (optional)
 
         Returns:
-            Lista di risultati più recenti
+        List of most recent results
         """
         self._connect()
 
         try:
-            # Query di base
             query = """
                     SELECT * FROM audit_results r1
                     WHERE timestamp = (
@@ -893,7 +834,6 @@ class SQLiteStorage:
                         WHERE r1.check_id = r2.check_id
                 """
 
-            # Aggiungi il filtro per target se specificato
             params = []
             if target_id:
                 query += " AND r2.target_id = ? AND r1.target_id = ?"
@@ -901,11 +841,9 @@ class SQLiteStorage:
 
             query += ") ORDER BY check_id"
 
-            # Esegui la query
             self.cursor.execute(query, params)
             rows = self.cursor.fetchall()
 
-            # Converti i risultati in oggetti AuditResult
             results = []
             for row in rows:
                 result_dict = dict(row)
@@ -924,42 +862,36 @@ class SQLiteStorage:
     def get_filtered_results(self, target_ids: Optional[List[str]] = None,
                              check_ids: Optional[List[str]] = None) -> List[AuditResult]:
         """
-        Recupera i risultati filtrati per target e/o controllo.
+        Gets results filtered by target and/or control.
 
         Args:
-            target_ids: Lista di ID target da filtrare (opzionale)
-            check_ids: Lista di ID controllo da filtrare (opzionale)
+        target_ids: List of target IDs to filter (optional)
+        check_ids: List of control IDs to filter (optional)
 
         Returns:
-            Lista di risultati filtrati
+        List of filtered results
         """
         self._connect()
 
         try:
-            # Costruisci la query di base
             query = "SELECT * FROM audit_results WHERE 1=1"
             params = []
 
-            # Aggiungi il filtro per target se specificato
             if target_ids:
                 placeholders = ','.join(['?'] * len(target_ids))
                 query += f" AND target_id IN ({placeholders})"
                 params.extend(target_ids)
 
-            # Aggiungi il filtro per controllo se specificato
             if check_ids:
                 placeholders = ','.join(['?'] * len(check_ids))
                 query += f" AND check_id IN ({placeholders})"
                 params.extend(check_ids)
 
-            # Ordina per timestamp decrescente
             query += " ORDER BY timestamp DESC"
 
-            # Esegui la query
             self.cursor.execute(query, params)
             rows = self.cursor.fetchall()
 
-            # Converti i risultati in oggetti AuditResult
             results = []
             for row in rows:
                 result_dict = dict(row)
@@ -977,25 +909,22 @@ class SQLiteStorage:
 
     def delete_result(self, result_id: str) -> bool:
         """
-        Elimina un risultato dal database.
+        Deletes a result from the database.
 
         Args:
-            result_id: ID del risultato da eliminare
+        result_id: ID of the result to delete
 
         Returns:
-            True se l'eliminazione ha avuto successo, False altrimenti
+        True if the delete was successful, False otherwise
         """
         self._connect()
 
         try:
-            # Query per eliminare il risultato
             query = "DELETE FROM audit_results WHERE id = ?"
 
-            # Esegui la query
             self.cursor.execute(query, (result_id,))
             self.conn.commit()
 
-            # Verifica se è stato eliminato qualcosa
             return self.cursor.rowcount > 0
 
         except sqlite3.Error as e:
@@ -1007,28 +936,24 @@ class SQLiteStorage:
 
     def delete_results_older_than(self, days: int) -> int:
         """
-        Elimina i risultati più vecchi di un certo numero di giorni.
+        Remove results older than a certain number of days.
 
         Args:
-            days: Numero di giorni
+        days: Number of days
 
         Returns:
-            Numero di risultati eliminati
+        Number of results removed
         """
         self._connect()
 
         try:
-            # Calcola la data limite
             cutoff_date = (datetime.datetime.now() - datetime.timedelta(days=days)).isoformat()
 
-            # Query per eliminare i risultati
             query = "DELETE FROM audit_results WHERE timestamp < ?"
 
-            # Esegui la query
             self.cursor.execute(query, (cutoff_date,))
             self.conn.commit()
 
-            # Restituisci il numero di righe eliminate
             return self.cursor.rowcount
 
         except sqlite3.Error as e:
@@ -1038,22 +963,21 @@ class SQLiteStorage:
         finally:
             self._disconnect()
 
-        # ----- Report Methods -----
+    # ----- Report Methods -----
 
     def save_report(self, report: AuditReport) -> AuditReport:
         """
-        Salva un report nel database.
+        Save a report to the database.
 
         Args:
-            report: Report da salvare
+        report: Report to save
 
         Returns:
-            Report salvato
+        Report saved
         """
         self._connect()
 
         try:
-            # Prepara i dati da salvare
             data = (
                 report.id,
                 report.name,
@@ -1067,14 +991,12 @@ class SQLiteStorage:
                 report.format
             )
 
-            # Query di insert/update
             query = """
                     INSERT OR REPLACE INTO audit_reports
                     (id, name, description, generated_at, target_ids, check_ids, compliance_stats, result_summary, result_ids, format)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """
 
-            # Esegui la query
             self.cursor.execute(query, data)
             self.conn.commit()
 
@@ -1089,38 +1011,33 @@ class SQLiteStorage:
 
     def get_report(self, report_id: str) -> Optional[AuditReport]:
         """
-        Recupera un report dal database.
+        Retrieves a report from the database.
 
         Args:
-            report_id: ID del report da recuperare
+        report_id: ID of the report to retrieve
 
         Returns:
-            Report recuperato o None se non trovato
+        Report retrieved or None if not found
         """
         self._connect()
 
         try:
-            # Query per recuperare il report
             query = "SELECT * FROM audit_reports WHERE id = ?"
 
-            # Esegui la query
             self.cursor.execute(query, (report_id,))
             row = self.cursor.fetchone()
 
             if not row:
                 return None
 
-            # Converti il risultato in un dizionario
             report_dict = dict(row)
 
-            # Converti liste e dizionari da JSON
             report_dict["target_ids"] = self._json_to_list(report_dict["target_ids"])
             report_dict["check_ids"] = self._json_to_list(report_dict["check_ids"])
             report_dict["compliance_stats"] = self._json_to_dict(report_dict["compliance_stats"])
             report_dict["result_summary"] = self._json_to_dict(report_dict["result_summary"])
             report_dict["result_ids"] = self._json_to_list(report_dict["result_ids"])
 
-            # Crea l'oggetto AuditReport
             return AuditReport.from_dict(report_dict)
 
         except sqlite3.Error as e:
@@ -1131,22 +1048,19 @@ class SQLiteStorage:
 
     def get_all_reports(self) -> List[AuditReport]:
         """
-        Recupera tutti i report dal database.
+        Retrieve all reports from the database.
 
         Returns:
-            Lista di tutti i report
+        List of all reports
         """
         self._connect()
 
         try:
-            # Query per recuperare tutti i report
             query = "SELECT * FROM audit_reports ORDER BY generated_at DESC"
 
-            # Esegui la query
             self.cursor.execute(query)
             rows = self.cursor.fetchall()
 
-            # Converti i risultati in oggetti AuditReport
             reports = []
             for row in rows:
                 report_dict = dict(row)
@@ -1167,25 +1081,22 @@ class SQLiteStorage:
 
     def delete_report(self, report_id: str) -> bool:
         """
-        Elimina un report dal database.
+        Delete a report from the database.
 
         Args:
-            report_id: ID del report da eliminare
+            report_id: ID of the report to delete
 
         Returns:
-            True se l'eliminazione ha avuto successo, False altrimenti
+            True if the deletion was successful, False otherwise
         """
         self._connect()
 
         try:
-            # Query per eliminare il report
             query = "DELETE FROM audit_reports WHERE id = ?"
 
-            # Esegui la query
             self.cursor.execute(query, (report_id,))
             self.conn.commit()
 
-            # Verifica se è stato eliminato qualcosa
             return self.cursor.rowcount > 0
 
         except sqlite3.Error as e:
@@ -1195,22 +1106,21 @@ class SQLiteStorage:
         finally:
             self._disconnect()
 
-        # ----- Scheduled Audit Methods -----
+    # ----- Scheduled Audit Methods -----
 
     def save_scheduled_audit(self, scheduled: ScheduledAudit) -> ScheduledAudit:
         """
-        Salva un audit pianificato nel database.
+        Saves a scheduled audit to the database.
 
         Args:
-            scheduled: Audit pianificato da salvare
+        scheduled: Scheduled audit to save
 
         Returns:
-            Audit pianificato salvato
+        Scheduled audit saved
         """
         self._connect()
 
         try:
-            # Prepara i dati da salvare
             data = (
                 scheduled.id,
                 scheduled.name,
@@ -1230,7 +1140,6 @@ class SQLiteStorage:
                 self._dict_to_json(scheduled.params)
             )
 
-            # Query di insert/update
             query = """
                     INSERT OR REPLACE INTO scheduled_audits
                     (id, name, description, target_ids, check_ids, frequency, day_of_week, day_of_month, hour, minute, 
@@ -1238,7 +1147,6 @@ class SQLiteStorage:
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """
 
-            # Esegui la query
             self.cursor.execute(query, data)
             self.conn.commit()
 
@@ -1253,38 +1161,33 @@ class SQLiteStorage:
 
     def get_scheduled_audit(self, scheduled_id: str) -> Optional[ScheduledAudit]:
         """
-        Recupera un audit pianificato dal database.
+        Retrieves a scheduled audit from the database.
 
         Args:
-            scheduled_id: ID dell'audit pianificato da recuperare
+        scheduled_id: ID of the scheduled audit to retrieve
 
         Returns:
-            Audit pianificato recuperato o None se non trovato
+        Scheduled audit retrieved or None if not found
         """
         self._connect()
 
         try:
-            # Query per recuperare l'audit pianificato
             query = "SELECT * FROM scheduled_audits WHERE id = ?"
 
-            # Esegui la query
             self.cursor.execute(query, (scheduled_id,))
             row = self.cursor.fetchone()
 
             if not row:
                 return None
 
-            # Converti il risultato in un dizionario
             scheduled_dict = dict(row)
 
-            # Converti boolean, liste e dizionari
             scheduled_dict["enabled"] = bool(scheduled_dict["enabled"])
             scheduled_dict["notify_on_completion"] = bool(scheduled_dict["notify_on_completion"])
             scheduled_dict["target_ids"] = self._json_to_list(scheduled_dict["target_ids"])
             scheduled_dict["check_ids"] = self._json_to_list(scheduled_dict["check_ids"])
             scheduled_dict["params"] = self._json_to_dict(scheduled_dict["params"])
 
-            # Crea l'oggetto ScheduledAudit
             return ScheduledAudit.from_dict(scheduled_dict)
 
         except sqlite3.Error as e:
@@ -1295,22 +1198,19 @@ class SQLiteStorage:
 
     def get_all_scheduled_audits(self) -> List[ScheduledAudit]:
         """
-        Recupera tutti gli audit pianificati dal database.
+        Retrieves all scheduled audits from the database.
 
         Returns:
-            Lista di tutti gli audit pianificati
+        List of all scheduled audits
         """
         self._connect()
 
         try:
-            # Query per recuperare tutti gli audit pianificati
             query = "SELECT * FROM scheduled_audits ORDER BY next_run"
 
-            # Esegui la query
             self.cursor.execute(query)
             rows = self.cursor.fetchall()
 
-            # Converti i risultati in oggetti ScheduledAudit
             scheduled_audits = []
             for row in rows:
                 scheduled_dict = dict(row)
@@ -1331,25 +1231,21 @@ class SQLiteStorage:
 
     def get_due_scheduled_audits(self) -> List[ScheduledAudit]:
         """
-        Recupera gli audit pianificati che devono essere eseguiti.
+        Retrieves scheduled audits that need to be run.
 
         Returns:
-            Lista di audit pianificati da eseguire
+        List of scheduled audits to run
         """
         self._connect()
 
         try:
-            # Ottieni la data e ora corrente
             now = datetime.datetime.now().isoformat()
 
-            # Query per recuperare gli audit pianificati da eseguire
             query = "SELECT * FROM scheduled_audits WHERE enabled = 1 AND next_run <= ? ORDER BY next_run"
 
-            # Esegui la query
             self.cursor.execute(query, (now,))
             rows = self.cursor.fetchall()
 
-            # Converti i risultati in oggetti ScheduledAudit
             scheduled_audits = []
             for row in rows:
                 scheduled_dict = dict(row)
@@ -1370,25 +1266,22 @@ class SQLiteStorage:
 
     def delete_scheduled_audit(self, scheduled_id: str) -> bool:
         """
-        Elimina un audit pianificato dal database.
+        Deletes a scheduled audit from the database.
 
         Args:
-            scheduled_id: ID dell'audit pianificato da eliminare
+        scheduled_id: ID of the scheduled audit to delete
 
         Returns:
-            True se l'eliminazione ha avuto successo, False altrimenti
+        True if the deletion was successful, False otherwise
         """
         self._connect()
 
         try:
-            # Query per eliminare l'audit pianificato
             query = "DELETE FROM scheduled_audits WHERE id = ?"
 
-            # Esegui la query
             self.cursor.execute(query, (scheduled_id,))
             self.conn.commit()
 
-            # Verifica se è stato eliminato qualcosa
             return self.cursor.rowcount > 0
 
         except sqlite3.Error as e:
@@ -1398,25 +1291,23 @@ class SQLiteStorage:
         finally:
             self._disconnect()
 
-        # ----- User Account Methods -----
+    # ----- User Account Methods -----
 
     def save_user(self, user: UserAccount) -> UserAccount:
         """
-        Salva un account utente nel database.
+        Saves a user account to the database.
 
         Args:
-            user: Account utente da salvare
+        user: User account to save
 
         Returns:
-            Account utente salvato
+        Saved user account
         """
         self._connect()
 
         try:
-            # Aggiorna il timestamp di modifica
             user.updated_at = datetime.datetime.now()
 
-            # Prepara i dati da salvare
             data = (
                 user.id,
                 user.username,
@@ -1432,7 +1323,6 @@ class SQLiteStorage:
                 self._dict_to_json(user.preferences)
             )
 
-            # Query di insert/update
             query = """
                     INSERT OR REPLACE INTO user_accounts
                     (id, username, password_hash, email, first_name, last_name, role, enabled, 
@@ -1440,7 +1330,6 @@ class SQLiteStorage:
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """
 
-            # Esegui la query
             self.cursor.execute(query, data)
             self.conn.commit()
 
@@ -1451,22 +1340,19 @@ class SQLiteStorage:
 
     def get_all_users(self) -> List['UserAccount']:
         """
-        Recupera tutti gli utenti dal database.
+        Retrieve all users from the database.
 
         Returns:
-            Lista di tutti gli utenti
+        List of all users
         """
         self._connect()
 
         try:
-            # Query per recuperare tutti gli utenti
             query = "SELECT * FROM user_accounts ORDER BY username"
 
-            # Esegui la query
             self.cursor.execute(query)
             rows = self.cursor.fetchall()
 
-            # Converti i risultati in oggetti UserAccount
             users = []
             for row in rows:
                 user_dict = dict(row)
@@ -1484,25 +1370,22 @@ class SQLiteStorage:
 
     def get_users_by_username(self, username: str) -> List['UserAccount']:
         """
-        Recupera gli utenti con un certo username.
+        Gets users with a given username.
 
         Args:
-            username: Username da cercare
+        username: Username to search
 
         Returns:
-            Lista di utenti trovati (normalmente sarà al massimo uno)
+        List of users found (usually will be at most one)
         """
         self._connect()
 
         try:
-            # Query per recuperare l'utente
             query = "SELECT * FROM user_accounts WHERE username = ?"
 
-            # Esegui la query
             self.cursor.execute(query, (username,))
             rows = self.cursor.fetchall()
 
-            # Converti i risultati in oggetti UserAccount
             users = []
             for row in rows:
                 user_dict = dict(row)
@@ -1520,33 +1403,29 @@ class SQLiteStorage:
 
     def get_user(self, user_id: str) -> Optional['UserAccount']:
         """
-        Recupera un utente dal database.
+        Retrieves a user from the database.
 
         Args:
-            user_id: ID dell'utente da recuperare
+        user_id: ID of the user to retrieve
 
         Returns:
-            Utente recuperato o None se non trovato
+        Retrieved user or None if not found
         """
         self._connect()
 
         try:
-            # Query per recuperare l'utente
             query = "SELECT * FROM user_accounts WHERE id = ?"
 
-            # Esegui la query
             self.cursor.execute(query, (user_id,))
             row = self.cursor.fetchone()
 
             if not row:
                 return None
 
-            # Converti il risultato in un oggetto UserAccount
             user_dict = dict(row)
             user_dict["enabled"] = bool(user_dict["enabled"])
             user_dict["preferences"] = self._json_to_dict(user_dict["preferences"])
 
-            # Crea l'oggetto UserAccount
             return UserAccount.from_dict(user_dict)
 
         except sqlite3.Error as e:
@@ -1557,25 +1436,22 @@ class SQLiteStorage:
 
     def delete_user(self, user_id: str) -> bool:
         """
-        Elimina un utente dal database.
+        Deletes a user from the database.
 
         Args:
-            user_id: ID dell'utente da eliminare
+        user_id: ID of the user to delete
 
         Returns:
-            True se l'eliminazione ha avuto successo, False altrimenti
+        True if the deletion was successful, False otherwise
         """
         self._connect()
 
         try:
-            # Query per eliminare l'utente
             query = "DELETE FROM user_accounts WHERE id = ?"
 
-            # Esegui la query
             self.cursor.execute(query, (user_id,))
             self.conn.commit()
 
-            # Verifica se è stato eliminato qualcosa
             return self.cursor.rowcount > 0
 
         except sqlite3.Error as e:
@@ -1585,13 +1461,14 @@ class SQLiteStorage:
         finally:
             self._disconnect()
 
-    # Aggiungi un metodo per inizializzare il database separatamente
+    #  ----- Init db Methods -----
+
     def init_db(self):
         """
-        Inizializza il database creando tutte le tabelle necessarie.
+        Initializes the database by creating all the necessary tables.
 
         Returns:
-            True se l'inizializzazione ha successo, False altrimenti
+        True if initialization succeeds, False otherwise
         """
         try:
             self._initialize_db()
