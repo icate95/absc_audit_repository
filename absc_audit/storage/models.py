@@ -1,8 +1,8 @@
 """
-Storage Models - Definizione dei modelli dati per il sistema di audit ABSC.
+Storage Models - Data model definition for the ABSC audit system.
 
-Questo modulo implementa i modelli dati utilizzati dal sistema
-per rappresentare target, controlli e risultati.
+This module implements the data models used by the system
+to represent targets, controls and results.
 """
 
 import datetime
@@ -10,14 +10,12 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any, Union
 
-
 @dataclass
 class Target:
     """
-    Rappresenta un target su cui eseguire gli audit.
+    Represents a target on which to perform audits.
 
-    Un target può essere un server, un dispositivo di rete o qualsiasi
-    endpoint su cui è necessario eseguire controlli di sicurezza.
+    A target can be a server, a network device, or any endpoint on which security checks need to be performed.
     """
 
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
@@ -34,14 +32,14 @@ class Target:
     updated_at: datetime.datetime = field(default_factory=datetime.datetime.now)
 
     def __post_init__(self):
-        """Validazione e impostazione di valori predefiniti."""
+        """Validation and setting default values."""
         if not self.name and self.hostname:
             self.name = self.hostname
         elif not self.name and self.ip_address:
             self.name = self.ip_address
 
     def to_dict(self) -> Dict:
-        """Converte il target in un dizionario serializzabile."""
+        """Converts the target into a serializable dictionary."""
         return {
             "id": self.id,
             "name": self.name,
@@ -59,8 +57,7 @@ class Target:
 
     @classmethod
     def from_dict(cls, data: Dict) -> 'Target':
-        """Crea un target da un dizionario."""
-        # Converte le date da stringa a datetime
+        """Create a target from a dictionary."""
         if 'created_at' in data and isinstance(data['created_at'], str):
             data['created_at'] = datetime.datetime.fromisoformat(data['created_at'])
         if 'updated_at' in data and isinstance(data['updated_at'], str):
@@ -68,14 +65,13 @@ class Target:
 
         return cls(**data)
 
-
 @dataclass
 class AuditCheck:
     """
-    Rappresenta un controllo di audit ABSC.
+    Represents an ABSC audit control.
 
-    Questa classe contiene i metadati di un controllo, come ID ABSC,
-    descrizione, domanda e possibili risposte.
+    This class contains metadata about a control, such as ABSC ID,
+    description, question, and possible answers.
     """
 
     id: str  # ID ABSC (es. "1.1.1-1.1.4")
@@ -84,12 +80,12 @@ class AuditCheck:
     question: str
     possible_answers: List[str]
     category: str = ""
-    priority: int = 3  # 1 (alta), 2 (media), 3 (bassa)
+    priority: int = 3  # 1 (high), 2 (medium), 3 (low)
     enabled: bool = True
     params: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict:
-        """Converte il controllo in un dizionario serializzabile."""
+        """Converts the control into a serializable dictionary."""
         return {
             "id": self.id,
             "name": self.name,
@@ -104,17 +100,16 @@ class AuditCheck:
 
     @classmethod
     def from_dict(cls, data: Dict) -> 'AuditCheck':
-        """Crea un controllo da un dizionario."""
+        """Create a control from a dictionary."""
         return cls(**data)
-
 
 @dataclass
 class AuditResult:
     """
-    Rappresenta il risultato di un controllo di audit su un target.
+    Represents the result of an audit check on a target.
 
-    Questa classe contiene tutte le informazioni sul risultato di un controllo,
-    inclusi stato, punteggio, dettagli e dati grezzi.
+    This class contains all the information about the result of a check,
+    including status, score, details, and raw data.
     """
 
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
@@ -129,7 +124,7 @@ class AuditResult:
     notes: str = ""
 
     def to_dict(self) -> Dict:
-        """Converte il risultato in un dizionario serializzabile."""
+        """Converts the result into a serializable dictionary."""
         return {
             "id": self.id,
             "check_id": self.check_id,
@@ -145,7 +140,7 @@ class AuditResult:
 
     @classmethod
     def from_dict(cls, data: Dict) -> 'AuditResult':
-        """Crea un risultato da un dizionario."""
+        """Create a result from a dictionary."""
         # Converte le date da stringa a datetime
         if 'timestamp' in data and isinstance(data['timestamp'], str):
             data['timestamp'] = datetime.datetime.fromisoformat(data['timestamp'])
@@ -154,14 +149,13 @@ class AuditResult:
 
         return cls(**data)
 
-
 @dataclass
 class AuditReport:
     """
-    Rappresenta un report che aggrega i risultati di più controlli.
+    Represents a report that aggregates the results of multiple audits.
 
-    Questa classe contiene informazioni aggregate su più risultati di audit,
-    inclusi statistiche di conformità e metriche generali.
+    This class contains aggregate information about multiple audit results,
+    including compliance statistics and general metrics.
     """
 
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
@@ -176,7 +170,7 @@ class AuditReport:
     format: str = "json"  # json, csv, html, pdf
 
     def to_dict(self) -> Dict:
-        """Converte il report in un dizionario serializzabile."""
+        """Converts the report into a serializable dictionary."""
         return {
             "id": self.id,
             "name": self.name,
@@ -192,13 +186,11 @@ class AuditReport:
 
     @classmethod
     def from_dict(cls, data: Dict) -> 'AuditReport':
-        """Crea un report da un dizionario."""
-        # Converte le date da stringa a datetime
+        """Create a report from a dictionary."""
         if 'generated_at' in data and isinstance(data['generated_at'], str):
             data['generated_at'] = datetime.datetime.fromisoformat(data['generated_at'])
 
         return cls(**data)
-
 
 @dataclass
 class ScheduledAudit:
@@ -227,7 +219,7 @@ class ScheduledAudit:
     params: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict:
-        """Converte l'audit pianificato in un dizionario serializzabile."""
+        """Converts the report into a serializable dictionary."""
         return {
             "id": self.id,
             "name": self.name,
@@ -249,8 +241,7 @@ class ScheduledAudit:
 
     @classmethod
     def from_dict(cls, data: Dict) -> 'ScheduledAudit':
-        """Crea un audit pianificato da un dizionario."""
-        # Converte le date da stringa a datetime
+        """Create a report from a dictionary."""
         if 'last_run' in data and isinstance(data['last_run'], str) and data['last_run']:
             data['last_run'] = datetime.datetime.fromisoformat(data['last_run'])
         if 'next_run' in data and isinstance(data['next_run'], str) and data['next_run']:
@@ -258,14 +249,13 @@ class ScheduledAudit:
 
         return cls(**data)
 
-
 @dataclass
 class UserAccount:
     """
-    Rappresenta un account utente per l'accesso al sistema.
+    Represents a user account for accessing the system.
 
-    Questa classe contiene informazioni su un utente del sistema di audit,
-    inclusi credenziali, permessi e dettagli personali.
+    This class contains information about a user of the audit system,
+    including credentials, permissions, and personal details.
     """
 
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
@@ -282,7 +272,7 @@ class UserAccount:
     preferences: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict:
-        """Converte l'account utente in un dizionario serializzabile."""
+        """Converts the report into a serializable dictionary."""
         return {
             "id": self.id,
             "username": self.username,
@@ -299,12 +289,10 @@ class UserAccount:
 
     @classmethod
     def from_dict(cls, data: Dict) -> 'UserAccount':
-        """Crea un account utente da un dizionario."""
-        # Rimuovi password_hash dal dizionario per sicurezza se presente nel to_dict
+        """Create a report from a dictionary."""
         if 'password_hash' not in data:
             data['password_hash'] = ""
 
-        # Converte le date da stringa a datetime
         for date_field in ['last_login', 'created_at', 'updated_at']:
             if date_field in data and isinstance(data[date_field], str) and data[date_field]:
                 data[date_field] = datetime.datetime.fromisoformat(data[date_field])
