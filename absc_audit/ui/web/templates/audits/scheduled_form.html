@@ -8,7 +8,7 @@
         <h1>{{ title }}</h1>
         <a href="{{ url_for('scheduled_audits_list') }}" class="btn btn-secondary">
             <i class="fas fa-arrow-left me-2"></i>
-            Torna alla lista
+            Back to List
         </a>
     </div>
 
@@ -19,8 +19,8 @@
 
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <label for="name" class="form-label">Nome</label>
-                        {{ form.name(class="form-control", placeholder="Inserisci nome") }}
+                        <label for="name" class="form-label">Name</label>
+                        {{ form.name(class="form-control", placeholder="Enter name") }}
                         {% if form.name.errors %}
                             <div class="invalid-feedback d-block">
                                 {% for error in form.name.errors %}
@@ -31,7 +31,7 @@
                     </div>
 
                     <div class="col-md-6">
-                        <label for="frequency" class="form-label">Frequenza</label>
+                        <label for="frequency" class="form-label">Frequency</label>
                         {{ form.frequency(class="form-control", onchange="updateFrequencyFields()") }}
                         {% if form.frequency.errors %}
                             <div class="invalid-feedback d-block">
@@ -45,7 +45,7 @@
 
                 <div class="row mb-3">
                     <div class="col-md-4 weekly-field">
-                        <label for="day_of_week" class="form-label">Giorno della Settimana</label>
+                        <label for="day_of_week" class="form-label">Day of Week</label>
                         {{ form.day_of_week(class="form-control") }}
                         {% if form.day_of_week.errors %}
                             <div class="invalid-feedback d-block">
@@ -57,7 +57,7 @@
                     </div>
 
                     <div class="col-md-4 monthly-field">
-                        <label for="day_of_month" class="form-label">Giorno del Mese (1-31)</label>
+                        <label for="day_of_month" class="form-label">Day of Month (1-31)</label>
                         {{ form.day_of_month(class="form-control", min=1, max=31) }}
                         {% if form.day_of_month.errors %}
                             <div class="invalid-feedback d-block">
@@ -69,7 +69,7 @@
                     </div>
 
                     <div class="col-md-2">
-                        <label for="hour" class="form-label">Ora (0-23)</label>
+                        <label for="hour" class="form-label">Hour (0-23)</label>
                         {{ form.hour(class="form-control", min=0, max=23) }}
                         {% if form.hour.errors %}
                             <div class="invalid-feedback d-block">
@@ -81,7 +81,7 @@
                     </div>
 
                     <div class="col-md-2">
-                        <label for="minute" class="form-label">Minuto (0-59)</label>
+                        <label for="minute" class="form-label">Minute (0-59)</label>
                         {{ form.minute(class="form-control", min=0, max=59) }}
                         {% if form.minute.errors %}
                             <div class="invalid-feedback d-block">
@@ -95,7 +95,7 @@
 
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <label for="target_ids" class="form-label">Target</label>
+                        <label for="target_ids" class="form-label">Targets</label>
                         {{ form.target_ids(class="form-select", multiple=True, size=6) }}
                         {% if form.target_ids.errors %}
                             <div class="invalid-feedback d-block">
@@ -104,11 +104,11 @@
                                 {% endfor %}
                             </div>
                         {% endif %}
-                        <small class="form-text text-muted">Tieni premuto Ctrl per selezionare più target.</small>
+                        <small class="form-text text-muted">Hold Ctrl to select multiple targets.</small>
                     </div>
 
                     <div class="col-md-6">
-                        <label for="check_ids" class="form-label">Controlli</label>
+                        <label for="check_ids" class="form-label">Checks</label>
                         {{ form.check_ids(class="form-select", multiple=True, size=6) }}
                         {% if form.check_ids.errors %}
                             <div class="invalid-feedback d-block">
@@ -117,13 +117,13 @@
                                 {% endfor %}
                             </div>
                         {% endif %}
-                        <small class="form-text text-muted">Tieni premuto Ctrl per selezionare più controlli.</small>
+                        <small class="form-text text-muted">Hold Ctrl to select multiple checks.</small>
                     </div>
                 </div>
 
                 <div class="mb-3">
-                    <label for="description" class="form-label">Descrizione</label>
-                    {{ form.description(class="form-control", rows=3, placeholder="Inserisci descrizione") }}
+                    <label for="description" class="form-label">Description</label>
+                    {{ form.description(class="form-control", rows=3, placeholder="Enter description") }}
                     {% if form.description.errors %}
                         <div class="invalid-feedback d-block">
                             {% for error in form.description.errors %}
@@ -137,18 +137,18 @@
                     <div class="col-md-6">
                         <div class="form-check mb-3">
                             {{ form.enabled(class="form-check-input") }}
-                            <label class="form-check-label" for="enabled">Abilitato</label>
+                            <label class="form-check-label" for="enabled">Enabled</label>
                         </div>
 
                         <div class="form-check">
                             {{ form.notify_on_completion(class="form-check-input", onchange="toggleNotifyEmail()") }}
-                            <label class="form-check-label" for="notify_on_completion">Notifica al completamento</label>
+                            <label class="form-check-label" for="notify_on_completion">Notify on Completion</label>
                         </div>
                     </div>
 
                     <div class="col-md-6 notify-email-field">
-                        <label for="notify_email" class="form-label">Email per notifiche</label>
-                        {{ form.notify_email(class="form-control", placeholder="Inserisci email") }}
+                        <label for="notify_email" class="form-label">Notification Email</label>
+                        {{ form.notify_email(class="form-control", placeholder="Enter email") }}
                         {% if form.notify_email.errors %}
                             <div class="invalid-feedback d-block">
                                 {% for error in form.notify_email.errors %}
@@ -160,8 +160,8 @@
                 </div>
 
                 <div class="d-flex justify-content-end mt-4">
-                    <a href="{{ url_for('scheduled_audits_list') }}" class="btn btn-secondary me-2">Annulla</a>
-                    <button type="submit" class="btn btn-primary">Salva</button>
+                    <a href="{{ url_for('scheduled_audits_list') }}" class="btn btn-secondary me-2">Cancel</a>
+                    <button type="submit" class="btn btn-primary">Save</button>
                 </div>
             </form>
         </div>
@@ -171,24 +171,24 @@
 
 {% block scripts %}
 <script>
-    // Funzione per mostrare/nascondere i campi specifici per la frequenza
+    // Function to show/hide frequency-specific fields
     function updateFrequencyFields() {
         const frequency = document.getElementById('frequency').value;
 
-        // Campi per frequenza settimanale
+        // Weekly frequency fields
         const weeklyFields = document.querySelectorAll('.weekly-field');
         weeklyFields.forEach(field => {
             field.style.display = frequency === 'weekly' ? 'block' : 'none';
         });
 
-        // Campi per frequenza mensile
+        // Monthly frequency fields
         const monthlyFields = document.querySelectorAll('.monthly-field');
         monthlyFields.forEach(field => {
             field.style.display = frequency === 'monthly' ? 'block' : 'none';
         });
     }
 
-    // Funzione per mostrare/nascondere il campo email notifica
+    // Function to show/hide notification email field
     function toggleNotifyEmail() {
         const notifyEnabled = document.getElementById('notify_on_completion').checked;
         const notifyEmailFields = document.querySelectorAll('.notify-email-field');
@@ -198,7 +198,7 @@
         });
     }
 
-    // Inizializza lo stato dei campi al caricamento della pagina
+    // Initialize field states on page load
     document.addEventListener('DOMContentLoaded', function() {
         updateFrequencyFields();
         toggleNotifyEmail();

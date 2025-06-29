@@ -1,17 +1,17 @@
 {% extends "layout.html" %}
 
-{% block title %}Audit Pianificati - ABSC Audit System{% endblock %}
+{% block title %}Scheduled Audits - ABSC Audit System{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>
             <i class="fas fa-calendar-alt me-2"></i>
-            Audit Pianificati
+            Scheduled Audits
         </h1>
         <a href="{{ url_for('scheduled_audit_add') }}" class="btn btn-primary">
             <i class="fas fa-plus me-2"></i>
-            Aggiungi Audit Pianificato
+            Add Scheduled Audit
         </a>
     </div>
 
@@ -21,14 +21,14 @@
                 <table class="table table-striped table-hover">
                     <thead>
                         <tr>
-                            <th>Nome</th>
-                            <th>Target</th>
-                            <th>Controlli</th>
-                            <th>Frequenza</th>
-                            <th>Prossima Esecuzione</th>
-                            <th>Ultima Esecuzione</th>
-                            <th>Stato</th>
-                            <th>Azioni</th>
+                            <th>Name</th>
+                            <th>Targets</th>
+                            <th>Checks</th>
+                            <th>Frequency</th>
+                            <th>Next Run</th>
+                            <th>Last Run</th>
+                            <th>Status</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -39,60 +39,60 @@
                                 {% set target_count = audit.target_ids|length %}
                                 {% if target_count > 0 %}
                                     {% set target = get_target(audit.target_ids[0]) %}
-                                    {{ target.name if target else "Target sconosciuto" }}
+                                    {{ target.name if target else "Unknown Target" }}
                                     {% if target_count > 1 %}
                                     <span class="badge bg-secondary">+{{ target_count - 1 }}</span>
                                     {% endif %}
                                 {% else %}
-                                    <span class="text-muted">Nessun target</span>
+                                    <span class="text-muted">No targets</span>
                                 {% endif %}
                             </td>
                             <td>
                                 {% set check_count = audit.check_ids|length %}
                                 {% if check_count > 0 %}
-                                    <span class="badge bg-primary">{{ check_count }} controlli</span>
+                                    <span class="badge bg-primary">{{ check_count }} checks</span>
                                 {% else %}
-                                    <span class="text-muted">Nessun controllo</span>
+                                    <span class="text-muted">No checks</span>
                                 {% endif %}
                             </td>
                             <td>
                                 {% if audit.frequency == 'daily' %}
-                                Giornaliera ({{ "%02d:%02d"|format(audit.hour, audit.minute) }})
+                                Daily ({{ "%02d:%02d"|format(audit.hour, audit.minute) }})
                                 {% elif audit.frequency == 'weekly' %}
-                                Settimanale
-                                ({{ ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"][audit.day_of_week] }}
+                                Weekly
+                                ({{ ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][audit.day_of_week] }}
                                 {{ "%02d:%02d"|format(audit.hour, audit.minute) }})
                                 {% elif audit.frequency == 'monthly' %}
-                                Mensile (Giorno {{ audit.day_of_month }} - {{ "%02d:%02d"|format(audit.hour, audit.minute) }})
+                                Monthly (Day {{ audit.day_of_month }} - {{ "%02d:%02d"|format(audit.hour, audit.minute) }})
                                 {% endif %}
                             </td>
                             <td>
                                 {% if audit.next_run %}
                                 {{ audit.next_run.strftime('%d/%m/%Y %H:%M') }}
                                 {% else %}
-                                <span class="text-muted">Non pianificato</span>
+                                <span class="text-muted">Not scheduled</span>
                                 {% endif %}
                             </td>
                             <td>
                                 {% if audit.last_run %}
                                 {{ audit.last_run.strftime('%d/%m/%Y %H:%M') }}
                                 {% else %}
-                                <span class="text-muted">Mai eseguito</span>
+                                <span class="text-muted">Never executed</span>
                                 {% endif %}
                             </td>
                             <td>
                                 {% if audit.enabled %}
-                                <span class="badge bg-success">Attivo</span>
+                                <span class="badge bg-success">Active</span>
                                 {% else %}
-                                <span class="badge bg-danger">Disattivato</span>
+                                <span class="badge bg-danger">Disabled</span>
                                 {% endif %}
                             </td>
                             <td>
                                 <div class="btn-group" role="group">
-                                    <a href="{{ url_for('scheduled_audit_edit', scheduled_id=audit.id) }}" class="btn btn-sm btn-warning" title="Modifica">
+                                    <a href="{{ url_for('scheduled_audit_edit', scheduled_id=audit.id) }}" class="btn btn-sm btn-warning" title="Edit">
                                         <i class="fas fa-edit"></i>
                                     </a>
-                                    <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ audit.id }}" title="Elimina">
+                                    <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ audit.id }}" title="Delete">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
@@ -102,20 +102,20 @@
                                     <div class="modal-dialog">
                                         <div class="modal-content">
                                             <div class="modal-header">
-                                                <h5 class="modal-title">Conferma eliminazione</h5>
+                                                <h5 class="modal-title">Confirm Deletion</h5>
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                             </div>
                                             <div class="modal-body">
-                                                Sei sicuro di voler eliminare l'audit pianificato <strong>{{ audit.name }}</strong>?
+                                                Are you sure you want to delete the scheduled audit <strong>{{ audit.name }}</strong>?
                                                 <p class="text-danger mt-2">
                                                     <i class="fas fa-exclamation-triangle me-2"></i>
-                                                    Questa operazione non può essere annullata.
+                                                    This operation cannot be undone.
                                                 </p>
                                             </div>
                                             <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                                                 <form action="{{ url_for('scheduled_audit_delete', scheduled_id=audit.id) }}" method="POST">
-                                                    <button type="submit" class="btn btn-danger">Elimina</button>
+                                                    <button type="submit" class="btn btn-danger">Delete</button>
                                                 </form>
                                             </div>
                                         </div>
@@ -125,7 +125,7 @@
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="8" class="text-center">Nessun audit pianificato trovato</td>
+                            <td colspan="8" class="text-center">No scheduled audits found</td>
                         </tr>
                         {% endfor %}
                     </tbody>

@@ -8,7 +8,6 @@ from absc_audit.core.engine import AuditEngine, CheckRegistry
 from absc_audit.storage.sqlite import SQLiteStorage
 from absc_audit.storage.models import AuditCheck, Target
 from absc_audit.checks.inventory import InventoryExistsCheck, DeviceDiscoveryCheck, DHCPMonitoringCheck
-from absc_audit.checks.network_inventory_additional_check import NetworkInventoryAdditionalCheck
 from absc_audit.checks.vulnerability import VulnerabilityScanCheck, PatchManagementCheck
 from absc_audit.checks.malware import AntimalwareCheck, ExecutionPreventionCheck
 from absc_audit.checks.authentication import PasswordPolicyCheck, AdminAccountsCheck
@@ -32,9 +31,6 @@ def init_registry(engine: AuditEngine, storage: SQLiteStorage):
     registry.register(InventoryExistsCheck.ID, InventoryExistsCheck)
     registry.register(DeviceDiscoveryCheck.ID, DeviceDiscoveryCheck)
     registry.register(DHCPMonitoringCheck.ID, DHCPMonitoringCheck)
-
-    # Record inventory controls advanced (ABSC 1.x)
-    registry.register(NetworkInventoryAdditionalCheck.ID, NetworkInventoryAdditionalCheck)
 
     # Record authentication checks (ABSC 2.x)
     registry.register(PasswordPolicyCheck.ID, PasswordPolicyCheck)

@@ -1,26 +1,26 @@
 {% extends "layout.html" %}
 
-{% block title %}Esegui Audit - ABSC Audit System{% endblock %}
+{% block title %}Run Audit - ABSC Audit System{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>
             <i class="fas fa-play-circle me-2"></i>
-            Esegui Audit
+            Run Audit
         </h1>
     </div>
 
     <div class="card">
         <div class="card-header">
-            <h5 class="card-title mb-0">Configura Audit</h5>
+            <h5 class="card-title mb-0">Configure Audit</h5>
         </div>
         <div class="card-body">
             <form method="POST" action="{{ url_for('audit_run') }}">
                 <div class="mb-3">
                     <label for="target_id" class="form-label">Target</label>
                     <select name="target_id" id="target_id" class="form-select" required>
-                        <option value="">Seleziona un target</option>
+                        <option value="">Select a target</option>
                         {% for target in targets %}
                         <option value="{{ target.id }}" {% if request.args.get('target_id') == target.id %}selected{% endif %}>
                             {{ target.name }} ({{ target.hostname }})
@@ -30,18 +30,18 @@
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Controlli da Eseguire</label>
+                    <label class="form-label">Checks to Execute</label>
 
                     <div class="mb-3">
                         <div class="form-check form-check-inline">
                             <input class="form-check-input" type="checkbox" id="selectAll" onchange="toggleAllChecks(this.checked)">
-                            <label class="form-check-label" for="selectAll">Seleziona tutti</label>
+                            <label class="form-check-label" for="selectAll">Select All</label>
                         </div>
 
                         <div class="btn-group ms-3">
-                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectByPriority(1)">Alta Priorità</button>
-                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectByPriority(2)">Media Priorità</button>
-                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectByPriority(3)">Bassa Priorità</button>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectByPriority(1)">High Priority</button>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectByPriority(2)">Medium Priority</button>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectByPriority(3)">Low Priority</button>
                         </div>
                     </div>
 
@@ -92,7 +92,7 @@
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="parallel" id="parallel">
                         <label class="form-check-label" for="parallel">
-                            Esecuzione parallela (più veloce ma potrebbe causare problemi su alcuni sistemi)
+                            Parallel Execution (faster but may cause issues on some systems)
                         </label>
                     </div>
                 </div>
@@ -100,7 +100,7 @@
                 <div class="d-grid">
                     <button type="submit" class="btn btn-primary">
                         <i class="fas fa-play-circle me-2"></i>
-                        Esegui Audit
+                        Run Audit
                     </button>
                 </div>
             </form>
@@ -111,42 +111,42 @@
 
 {% block scripts %}
 <script>
-    // Funzione per selezionare/deselezionare tutti i controlli
+    // Function to select/deselect all checks
     function toggleAllChecks(checked) {
         document.querySelectorAll('.check-item').forEach(function(checkbox) {
             checkbox.checked = checked;
         });
 
-        // Aggiorna gli stati delle caselle delle categorie
+        // Update category checkbox states
         document.querySelectorAll('.category-check').forEach(function(checkbox) {
             checkbox.checked = checked;
         });
     }
 
-    // Funzione per selezionare/deselezionare tutti i controlli di una categoria
+    // Function to select/deselect all checks in a category
     function toggleCategoryChecks(category, checked) {
         document.querySelectorAll('.category-' + category).forEach(function(checkbox) {
             checkbox.checked = checked;
         });
     }
 
-    // Funzione per selezionare tutti i controlli di una specifica priorità
+    // Function to select all checks of a specific priority
     function selectByPriority(priority) {
-        // Deseleziona prima tutti
+        // Deselect all first
         document.querySelectorAll('.check-item').forEach(function(checkbox) {
             checkbox.checked = false;
         });
 
-        // Seleziona solo quelli della priorità specificata
+        // Select only those with the specified priority
         document.querySelectorAll('.priority-' + priority).forEach(function(checkbox) {
             checkbox.checked = true;
         });
 
-        // Aggiorna gli stati delle caselle delle categorie
+        // Update category checkbox states
         updateCategoryCheckboxes();
     }
 
-    // Funzione per aggiornare lo stato delle caselle delle categorie
+    // Function to update category checkbox states
     function updateCategoryCheckboxes() {
         document.querySelectorAll('.category-check').forEach(function(categoryCheckbox) {
             const category = categoryCheckbox.id.replace('category_', '');
@@ -157,7 +157,7 @@
         });
     }
 
-    // Inizializza lo stato delle caselle delle categorie
+    // Initialize category checkbox states
     document.addEventListener('DOMContentLoaded', function() {
         updateCategoryCheckboxes();
     });
