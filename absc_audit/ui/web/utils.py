@@ -8,6 +8,7 @@ from absc_audit.core.engine import AuditEngine, CheckRegistry
 from absc_audit.storage.sqlite import SQLiteStorage
 from absc_audit.storage.models import AuditCheck, Target
 from absc_audit.checks.inventory import InventoryExistsCheck, DeviceDiscoveryCheck, DHCPMonitoringCheck
+from absc_audit.checks.network_inventory_additional_check import NetworkInventoryAdditionalCheck
 from absc_audit.checks.vulnerability import VulnerabilityScanCheck, PatchManagementCheck
 from absc_audit.checks.malware import AntimalwareCheck, ExecutionPreventionCheck
 from absc_audit.checks.authentication import PasswordPolicyCheck, AdminAccountsCheck
@@ -31,6 +32,9 @@ def init_registry(engine: AuditEngine, storage: SQLiteStorage):
     registry.register(InventoryExistsCheck.ID, InventoryExistsCheck)
     registry.register(DeviceDiscoveryCheck.ID, DeviceDiscoveryCheck)
     registry.register(DHCPMonitoringCheck.ID, DHCPMonitoringCheck)
+
+    # Record inventory controls advanced (ABSC 1.x)
+    registry.register(NetworkInventoryAdditionalCheck.ID, NetworkInventoryAdditionalCheck)
 
     # Record authentication checks (ABSC 2.x)
     registry.register(PasswordPolicyCheck.ID, PasswordPolicyCheck)
@@ -79,57 +83,6 @@ def init_registry(engine: AuditEngine, storage: SQLiteStorage):
             storage.save_check(check)
         except Exception as e:
             print(f"Error saving control {check_id} to database: {str(e)}")
-
-
-# def load_sample_data(storage: SQLiteStorage):
-#     """
-#     Load sample data into storage.
-#
-#     Args:
-#         storage: Storage instance
-#     """
-#     # Crea alcuni target di esempio se non ce ne sono
-#     if len(storage.get_all_targets()) == 0:
-#         example_targets = [
-#             Target(
-#                 name="Windows Server 2019",
-#                 hostname="win-srv-01",
-#                 ip_address="192.168.1.10",
-#                 os_type="windows",
-#                 os_version="Windows Server 2019",
-#                 description="Server principale Windows",
-#                 group="Servers",
-#                 tags=["windows", "server", "production"]
-#             ),
-#             Target(
-#                 name="Ubuntu Server 20.04",
-#                 hostname="ubuntu-srv-01",
-#                 ip_address="192.168.1.20",
-#                 os_type="linux",
-#                 os_version="Ubuntu 20.04 LTS",
-#                 description="Server principale Linux",
-#                 group="Servers",
-#                 tags=["linux", "server", "production"]
-#             ),
-#             Target(
-#                 name="Windows 10 Client",
-#                 hostname="win10-client-01",
-#                 ip_address="192.168.1.100",
-#                 os_type="windows",
-#                 os_version="Windows 10 Enterprise",
-#                 description="PC client Windows",
-#                 group="Clients",
-#                 tags=["windows", "client", "workstation"]
-#             )
-#         ]
-#
-#         for target in example_targets:
-#             try:
-#                 storage.save_target(target)
-#                 print(f"Target di esempio '{target.name}' aggiunto con successo")
-#             except Exception as e:
-#                 print(f"Errore nell'aggiunta del target di esempio '{target.name}': {str(e)}")
-
 
 def format_score(score: float) -> str:
     """

@@ -8,123 +8,404 @@
         <h1>{{ title }}</h1>
         <a href="{{ url_for('targets_list') }}" class="btn btn-secondary">
             <i class="fas fa-arrow-left me-2"></i>
-            Torna alla lista
+            Back to List
         </a>
     </div>
 
-    <div class="card">
-        <div class="card-body">
-            <form method="POST">
-                {{ form.csrf_token }}
+    <!-- Nav tabs for add methods -->
+    <ul class="nav nav-tabs mb-4" id="targetAddTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="manual-tab" data-bs-toggle="tab"
+                    data-bs-target="#manual-add" type="button" role="tab">
+                <i class="fas fa-plus me-2"></i>Manual Add
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="network-scan-tab" data-bs-toggle="tab"
+                    data-bs-target="#network-scan" type="button" role="tab">
+                <i class="fas fa-network-wired me-2"></i>Network Scan
+            </button>
+        </li>
+    </ul>
 
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label for="name" class="form-label">Nome</label>
-                        {{ form.name(class="form-control", placeholder="Inserisci nome") }}
-                        {% if form.name.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.name.errors %}
-                                    {{ error }}
-                                {% endfor %}
+    <div class="tab-content">
+        <!-- Manual Add Tab -->
+        <div class="tab-pane fade show active" id="manual-add" role="tabpanel">
+            <div class="card">
+                <div class="card-body">
+                    <form method="POST">
+                        {{ form.csrf_token }}
+                        <input type="hidden" name="form_type" value="manual_add">
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="name" class="form-label">Name</label>
+                                {{ form.name(class="form-control", placeholder="Enter name") }}
+                                {% if form.name.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.name.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
                             </div>
-                        {% endif %}
-                    </div>
 
-                    <div class="col-md-6">
-                        <label for="hostname" class="form-label">Hostname/IP</label>
-                        {{ form.hostname(class="form-control", placeholder="Inserisci hostname o indirizzo IP") }}
-                        {% if form.hostname.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.hostname.errors %}
-                                    {{ error }}
-                                {% endfor %}
+                            <div class="col-md-6">
+                                <label for="hostname" class="form-label">Hostname/IP</label>
+                                {{ form.hostname(class="form-control", placeholder="Enter hostname or IP address") }}
+                                {% if form.hostname.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.hostname.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
                             </div>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label for="ip_address" class="form-label">Indirizzo IP</label>
-                        {{ form.ip_address(class="form-control", placeholder="Inserisci indirizzo IP") }}
-                        {% if form.ip_address.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.ip_address.errors %}
-                                    {{ error }}
-                                {% endfor %}
-                            </div>
-                        {% endif %}
-                    </div>
-
-                    <div class="col-md-6">
-                        <label for="os_type" class="form-label">Sistema Operativo</label>
-                        {{ form.os_type(class="form-control") }}
-                        {% if form.os_type.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.os_type.errors %}
-                                    {{ error }}
-                                {% endfor %}
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label for="os_version" class="form-label">Versione SO</label>
-                        {{ form.os_version(class="form-control", placeholder="Inserisci versione del sistema operativo") }}
-                        {% if form.os_version.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.os_version.errors %}
-                                    {{ error }}
-                                {% endfor %}
-                            </div>
-                        {% endif %}
-                    </div>
-
-                    <div class="col-md-6">
-                        <label for="group" class="form-label">Gruppo</label>
-                        {{ form.group(class="form-control", placeholder="Inserisci gruppo") }}
-                        {% if form.group.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.group.errors %}
-                                    {{ error }}
-                                {% endfor %}
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <div class="mb-3">
-                    <label for="tags" class="form-label">Tag (separati da virgola)</label>
-                    {{ form.tags(class="form-control", placeholder="Inserisci tag separati da virgola") }}
-                    {% if form.tags.errors %}
-                        <div class="invalid-feedback d-block">
-                            {% for error in form.tags.errors %}
-                                {{ error }}
-                            {% endfor %}
                         </div>
-                    {% endif %}
-                </div>
 
-                <div class="mb-3">
-                    <label for="description" class="form-label">Descrizione</label>
-                    {{ form.description(class="form-control", rows=3, placeholder="Inserisci descrizione") }}
-                    {% if form.description.errors %}
-                        <div class="invalid-feedback d-block">
-                            {% for error in form.description.errors %}
-                                {{ error }}
-                            {% endfor %}
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="ip_address" class="form-label">IP Address</label>
+                                {{ form.ip_address(class="form-control", placeholder="Enter IP address") }}
+                                {% if form.ip_address.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.ip_address.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="os_type" class="form-label">Operating System</label>
+                                {{ form.os_type(class="form-control") }}
+                                {% if form.os_type.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.os_type.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
                         </div>
-                    {% endif %}
-                </div>
 
-                <div class="d-flex justify-content-end mt-4">
-                    <a href="{{ url_for('targets_list') }}" class="btn btn-secondary me-2">Annulla</a>
-                    <button type="submit" class="btn btn-primary">Salva</button>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="os_version" class="form-label">OS Version</label>
+                                {{ form.os_version(class="form-control", placeholder="Enter operating system version") }}
+                                {% if form.os_version.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.os_version.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="group" class="form-label">Group</label>
+                                {{ form.group(class="form-control", placeholder="Enter group") }}
+                                {% if form.group.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.group.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="tags" class="form-label">Tags (comma-separated)</label>
+                            {{ form.tags(class="form-control", placeholder="Enter comma-separated tags") }}
+                            {% if form.tags.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.tags.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            {{ form.description(class="form-control", rows=3, placeholder="Enter description") }}
+                            {% if form.description.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.description.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-flex justify-content-end mt-4">
+                            <a href="{{ url_for('targets_list') }}" class="btn btn-secondary me-2">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Save</button>
+                        </div>
+                    </form>
                 </div>
-            </form>
+            </div>
+        </div>
+
+        <!-- Network Scan Tab -->
+        <div class="tab-pane fade" id="network-scan" role="tabpanel">
+            <div class="card">
+                <div class="card-body">
+                    <form method="POST" id="networkScanForm">
+                        {{ network_scan_form.csrf_token }}
+                        <input type="hidden" name="form_type" value="network_scan">
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="scan_name" class="form-label">Scan Name</label>
+                                {{ network_scan_form.scan_name(class="form-control", placeholder="Enter scan name") }}
+                                {% if network_scan_form.scan_name.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in network_scan_form.scan_name.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="description" class="form-label">Description (Optional)</label>
+                                {{ network_scan_form.description(class="form-control", placeholder="Enter scan description") }}
+                                {% if network_scan_form.description.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in network_scan_form.description.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="network_ranges" class="form-label">Network Ranges</label>
+                                {{ network_scan_form.network_ranges(class="form-control", placeholder="e.g. 192.168.1.0/24, 10.0.0.0/16") }}
+                                <small class="form-text text-muted">
+                                    Enter network ranges separated by comma
+                                </small>
+                                {% if network_scan_form.network_ranges.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in network_scan_form.network_ranges.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="scan_method" class="form-label">Scan Method</label>
+                                {{ network_scan_form.scan_method(class="form-control") }}
+                                {% if network_scan_form.scan_method.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in network_scan_form.scan_method.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="ports" class="form-label">Ports to Scan</label>
+                                {{ network_scan_form.ports(class="form-control", placeholder="e.g. 22,80,443,3389") }}
+                                {% if network_scan_form.ports.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in network_scan_form.ports.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-check mt-4">
+                                    <label class="form-check-label" for="detailed">
+                                        Scan Type
+                                    </label>
+                                    {{ network_scan_form.detailed(class="form-control") }}
+                                    {% if network_scan_form.scan_method.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {% for error in network_scan_form.scan_method.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                {{ network_scan_form.save_targets(class="form-check-input") }}
+                                <label class="form-check-label" for="save_targets">
+                                    Save Devices as Targets
+                                </label>
+                                <small class="form-text text-muted d-block">
+                                    Automatically add discovered devices to the target list
+                                </small>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end mt-4">
+                            <a href="{{ url_for('targets_list') }}" class="btn btn-secondary me-2">Cancel</a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search me-2"></i>Start Scan
+                            </button>
+                        </div>
+                    </form>
+                    <div id="scanResultsContainer" class="mt-4" style="display: none;">
+                    <div id="scanLoading" class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Scanning in progress...</p>
+                    </div>
+                    <div id="scanResults" class="table-responsive" style="display: none;">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>
+                                        <input type="checkbox" id="selectAllDevices">
+                                    </th>
+                                    <th>Hostname</th>
+                                    <th>IP Address</th>
+                                    <th>MAC</th>
+                                    <th>Operating System</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="scanResultsBody">
+                                <!-- Scan results will be dynamically inserted here -->
+                            </tbody>
+                        </table>
+                        <div class="d-flex justify-content-end mt-3">
+                            <button id="addSelectedDevices" class="btn btn-success">
+                                <i class="fas fa-plus me-2"></i>Add Selected Devices
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Commented out tab-related code
+
+    const networkScanForm = document.getElementById('networkScanForm');
+    const scanResultsContainer = document.getElementById('scanResultsContainer');
+    const scanLoading = document.getElementById('scanLoading');
+    const scanResults = document.getElementById('scanResults');
+    const scanResultsBody = document.getElementById('scanResultsBody');
+    const selectAllDevices = document.getElementById('selectAllDevices');
+    const addSelectedDevices = document.getElementById('addSelectedDevices');
+
+    networkScanForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        // Show results container and loading
+        scanResultsContainer.style.display = 'block';
+        scanLoading.style.display = 'block';
+        scanResults.style.display = 'none';
+
+        // Simulate AJAX network scan call (to be implemented on the server side)
+        fetch('{{ url_for("perform_network_scan_route") }}', {
+            method: 'POST',
+            body: new FormData(networkScanForm)
+        })
+        .then(response => response.json())
+          .then(data => {
+                // Hide loading
+              console.log('scan',data)
+                scanLoading.style.display = 'none';
+
+                // Populate results table
+                scanResultsBody.innerHTML = '';
+                if (data.devices.length) {
+                      data.devices.forEach(device => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>
+                            <input type="checkbox" name="selected_devices" value="${device.id}"
+                                   ${device.exists ? 'disabled' : ''}>
+                        </td>
+                        <td>${device.hostname || 'N/A'}</td>
+                        <td>${device.ip}</td>
+                        <td>${device.mac}</td>
+                        <td>${device.os || 'Unknown'}</td>
+                        <td>
+                            ${device.exists ?
+                                '<span class="badge bg-warning">Already Exists</span>' :
+                                '<span class="badge bg-success">New</span>'}
+                        </td>
+                    `;
+                    scanResultsBody.appendChild(row);
+                });
+                } else {
+                    row.innerHTML = `No devices found. Try changing settings`;
+                }
+
+                // Show results
+                scanResults.style.display = 'block';
+            })
+            .catch(error => {
+                console.error('Error during scan:', error);
+                scanLoading.innerHTML = '<p class="text-danger">Error during scan</p>';
+            });
+    });
+
+    // Select/deselect all devices
+    selectAllDevices.addEventListener('change', function() {
+        const checkboxes = scanResultsBody.querySelectorAll('input[type="checkbox"]:not(:disabled)');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = selectAllDevices.checked;
+        });
+    });
+
+    // Add selected devices
+    addSelectedDevices.addEventListener('click', function() {
+        const selectedDevices = Array.from(
+            scanResultsBody.querySelectorAll('input[type="checkbox"]:checked')
+        ).map(checkbox => checkbox.value);
+
+        if (selectedDevices.length === 0) {
+            alert('Select at least one device');
+            return;
+        }
+
+        fetch('{{ url_for("add_targets_from_scan") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ selected_devices: selectedDevices })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(`${selectedDevices.length} devices added successfully`);
+                window.location.href = '{{ url_for("targets_list") }}';
+            } else {
+                alert('Error adding devices');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error adding devices');
+        });
+    });
+});
+</script>
 {% endblock %}

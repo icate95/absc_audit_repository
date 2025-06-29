@@ -1,0 +1,49 @@
+{% extends "layout.html" %}
+
+{% block title %}Network Scan Results{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card">
+        <div class="card-header">
+            <h2>Network Scan Results</h2>
+        </div>
+        <div class="card-body">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>IP</th>
+                        <th>Hostname</th>
+                        <th>Operating System</th>
+                        <th>Services</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for device in devices %}
+                    <tr>
+                        <td>{{ device.get('ip', 'N/A') }}</td>
+                        <td>{{ device.get('hostname', 'N/A') }}</td>
+                        <td>{{ device.get('os_details', {}).get('name', 'Unknown') }}</td>
+                        <td>
+                            {% for service in device.get('services', []) %}
+                                {{ service.get('port') }}/{{ service.get('service') }}
+                                ({{ service.get('state') }})
+                            {% endfor %}
+                        </td>
+                        <td>
+                            <form method="POST" action="{{ url_for('add_device_as_target') }}">
+                                <input type="hidden" name="device" value="{{ device | tojson }}">
+                                <button type="submit" class="btn btn-sm btn-primary">
+                                    Add as Target
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

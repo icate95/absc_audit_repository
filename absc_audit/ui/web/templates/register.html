@@ -1,23 +1,23 @@
 {% extends "layout.html" %}
 
-{% block title %}Registrazione - ABSC Audit System{% endblock %}
+{% block title %}Registration - ABSC Audit System{% endblock %}
 
 {% block content %}
 <div class="container">
     <div class="row justify-content-center">
-        <div class="col-md-8">
+        <div class="col-md-8" style="margin: 10vh 0">
             <div class="card shadow">
                 <div class="card-header bg-primary text-white text-center">
                     <h4 class="mb-0">
                         <i class="fas fa-user-plus me-2"></i>
-                        Registrazione
+                        Registration
                     </h4>
                 </div>
                 <div class="card-body">
                     {% if is_first_user %}
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
-                        Questo è il primo utente registrato nel sistema. Otterrà automaticamente i privilegi di amministratore.
+                        This is the first user registered in the system. They will automatically receive administrator privileges.
                     </div>
                     {% endif %}
 
@@ -26,8 +26,8 @@
 
                         <div class="row mb-3">
                             <div class="col-md-6">
-                                <label for="first_name" class="form-label">Nome</label>
-                                {{ form.first_name(class="form-control", placeholder="Inserisci nome") }}
+                                <label for="first_name" class="form-label">First Name</label>
+                                {{ form.first_name(class="form-control", placeholder="Enter first name") }}
                                 {% if form.first_name.errors %}
                                     <div class="invalid-feedback d-block">
                                         {% for error in form.first_name.errors %}
@@ -37,8 +37,8 @@
                                 {% endif %}
                             </div>
                             <div class="col-md-6">
-                                <label for="last_name" class="form-label">Cognome</label>
-                                {{ form.last_name(class="form-control", placeholder="Inserisci cognome") }}
+                                <label for="last_name" class="form-label">Last Name</label>
+                                {{ form.last_name(class="form-control", placeholder="Enter last name") }}
                                 {% if form.last_name.errors %}
                                     <div class="invalid-feedback d-block">
                                         {% for error in form.last_name.errors %}
@@ -51,7 +51,7 @@
 
                         <div class="mb-3">
                             <label for="email" class="form-label">Email</label>
-                            {{ form.email(class="form-control", placeholder="Inserisci email") }}
+                            {{ form.email(class="form-control", placeholder="Enter email") }}
                             {% if form.email.errors %}
                                 <div class="invalid-feedback d-block">
                                     {% for error in form.email.errors %}
@@ -63,7 +63,7 @@
 
                         <div class="mb-3">
                             <label for="username" class="form-label">Username</label>
-                            {{ form.username(class="form-control", placeholder="Inserisci username") }}
+                            {{ form.username(class="form-control", placeholder="Enter username") }}
                             {% if form.username.errors %}
                                 <div class="invalid-feedback d-block">
                                     {% for error in form.username.errors %}
@@ -76,7 +76,7 @@
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label for="password" class="form-label">Password</label>
-                                {{ form.password(class="form-control", placeholder="Inserisci password") }}
+                                {{ form.password(class="form-control", placeholder="Enter password") }}
                                 {% if form.password.errors %}
                                     <div class="invalid-feedback d-block">
                                         {% for error in form.password.errors %}
@@ -86,8 +86,8 @@
                                 {% endif %}
                             </div>
                             <div class="col-md-6">
-                                <label for="confirm_password" class="form-label">Conferma Password</label>
-                                {{ form.confirm_password(class="form-control", placeholder="Conferma password") }}
+                                <label for="confirm_password" class="form-label">Confirm Password</label>
+                                {{ form.confirm_password(class="form-control", placeholder="Confirm password") }}
                                 {% if form.confirm_password.errors %}
                                     <div class="invalid-feedback d-block">
                                         {% for error in form.confirm_password.errors %}
@@ -101,13 +101,13 @@
                         <div class="d-grid">
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-user-plus me-2"></i>
-                                Registrati
+                                Sign Up
                             </button>
                         </div>
                     </form>
 
                     <div class="mt-3 text-center">
-                        <p>Hai già un account? <a href="{{ url_for('login') }}">Accedi</a></p>
+                        <p>Already have an account? <a href="{{ url_for('login') }}">Log In</a></p>
                     </div>
                 </div>
             </div>

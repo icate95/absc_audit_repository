@@ -7,9 +7,8 @@ from rich.table import Table
 import uuid
 import datetime
 
-from absc_audit.core.engine import AuditEngine
+from absc_audit.core.engine import AuditEngine, CheckRegistry
 from absc_audit.checks.base import BaseCheck
-from absc_audit.checks.checkRegistry import CheckRegistry
 from absc_audit.storage.sqlite import SQLiteStorage
 from absc_audit.config.settings import Settings
 from absc_audit.storage.models import Target, AuditCheck, NetworkScan, NetworkDevice
