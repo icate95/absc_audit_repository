@@ -9,6 +9,7 @@ from abc import ABC, abstractmethod
 import datetime
 import logging
 import uuid
+import subprocess
 from enum import Enum
 from typing import Dict, List, Optional, Any, Union
 
@@ -59,16 +60,6 @@ class BaseCheck(ABC):
     This class defines the common interface that all specific checks
     must implement. It also provides basic functionality like
     logging and error handling.
-    # Attributes
-    ID = None
-    NAME = None
-    DESCRIPTION = None
-    QUESTION = None
-    POSSIBLE_ANSWERS = []
-    CATEGORY = None
-    PRIORITY = 3
-    SEVERITY: SeverityLevel = SeverityLevel.MEDIUM
-    SCORE_COMPONENTS: List[ScoreComponent] = []
     """
 
     # Class attributes that must be defined in subclasses
@@ -79,9 +70,15 @@ class BaseCheck(ABC):
     POSSIBLE_ANSWERS = []  # Possible answers
     CATEGORY = None  # Category (e.g. "Inventory")
     PRIORITY = 3  # Priority (1=high, 2=medium, 3=low)
+    SCORE_COMPONENTS = []
 
-    def __init__(self):
-        """Initialize the check."""
+    def __init__(self, ssh_client=None):
+        """
+        Initialize the check with an optional SSH client
+
+        Args:
+            ssh_client: Optional SSH client for remote execution
+        """
         # Validate mandatory attributes
         if not self.ID:
             raise ValueError(f"Check ID not defined in {self.__class__.__name__}")
@@ -92,6 +89,22 @@ class BaseCheck(ABC):
 
         self.logger = logger
         self._scoring_components = self.SCORE_COMPONENTS.copy()
+
+        self._ssh_client = ssh_client
+
+    def prepare_result(self, target=None):
+        return {
+            'id': str(uuid.uuid4()),
+            'check_id': self.ID,
+            'timestamp': datetime.datetime.now().isoformat(),
+            'status': None,
+            'scoring_details': self.get_scoring_details(),
+            'score': self.calculate_weighted_score(),
+            'details': {},
+            'raw_data': {},
+            'notes': "",
+            'target': target
+        }
 
     def add_score_component(
         self,
@@ -141,7 +154,9 @@ class BaseCheck(ABC):
             comp.weight for comp in self._scoring_components
         )
 
-        return min(100, weighted_score * severity_multiplier[self.SEVERITY])
+        # return min(100, weighted_score * severity_multiplier[self.SEVERITY])
+        return 100
+
 
     def get_scoring_details(self) -> Dict[str, Any]:
         """
@@ -151,7 +166,7 @@ class BaseCheck(ABC):
             Dict: Scoring component details
         """
         return {
-            "severity": self.SEVERITY.name,
+            # "severity": self.SEVERITY.name,
             "components": [
                 {
                     "name": comp.name,
@@ -176,27 +191,6 @@ class BaseCheck(ABC):
             Dictionary with check results
         """
         pass
-
-    def prepare_result(self) -> Dict:
-        """
-        Prepare a base dictionary for check results.
-
-        Returns:
-            Base dictionary for results
-        """
-        result = super().prepare_result()
-
-        return {
-            'id': str(uuid.uuid4()),
-            'check_id': self.ID,
-            'timestamp': datetime.datetime.now().isoformat(),
-            'status': None,
-            'scoring_details': self.get_scoring_details(),
-            'score': self.calculate_weighted_score(),
-            'details': {},
-            'raw_data': {},
-            'notes': ""
-        }
 
     def validate_result(self, result: Dict) -> bool:
         """
@@ -290,24 +284,68 @@ class BaseCheck(ABC):
 
     def execute_command(self, target: Target, command: str, use_sudo: bool = False) -> Dict:
         """
-        Execute a command on the target and return its output.
+        Execute a command with local fallback
 
         Args:
-            target: Target to execute command on
+            target: Target system
             command: Command to execute
-            use_sudo: Whether to use sudo for execution
+            use_sudo: Flag to use sudo
 
         Returns:
-            Dictionary with stdout, stderr, and exit code
+            Dictionary with command results
         """
-        # This is only a helper functionality that will be implemented by
-        # specific connectors (SSH, WMI, etc.) in concrete subclasses
-        self.logger.debug(f"Would execute command on {target.name}: {command}")
-        return {
-            'stdout': "",
-            'stderr': "Command execution not implemented in base class",
-            'exit_code': -1
-        }
+        if self._ssh_client is not None:
+            try:
+                os_type = target.os_type.lower()
+
+                if os_type.startswith('windows'):
+                    full_command = f"powershell.exe -Command \"{command}\""
+                else:
+                    full_command = f"sudo {command}" if use_sudo else command
+
+                stdin, stdout, stderr = self._ssh_client.exec_command(full_command)
+
+                stdout_content = stdout.read().decode('utf-8')
+                stderr_content = stderr.read().decode('utf-8')
+                exit_status = stdout.channel.recv_exit_status()
+
+                return {
+                    'stdout': stdout_content,
+                    'stderr': stderr_content,
+                    'exit_code': exit_status
+                }
+            except Exception as e:
+                self.logger.warning(f"SSH command failed: {str(e)}")
+
+        try:
+            if use_sudo:
+                command = f"sudo {command}"
+
+            process = subprocess.Popen(
+                command,
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+
+            stdout, stderr = process.communicate()
+
+            return {
+                'stdout': stdout,
+                'stderr': stderr,
+                'exit_code': process.returncode
+            }
+
+        except Exception as e:
+            error_message = f"Local command execution error: {str(e)}"
+            self.logger.error(error_message)
+
+            return {
+                'stdout': '',
+                'stderr': error_message,
+                'exit_code': -1
+            }
 
     def check_file_exists(self, target: Target, path: str) -> bool:
         """
@@ -318,57 +356,200 @@ class BaseCheck(ABC):
             path: File path to verify
 
         Returns:
-            True if the file exists, False otherwise
+            Boolean indicating file existence
         """
-        # Basic implementation, to be overridden in concrete subclasses
-        self.logger.debug(f"Would check if file exists on {target.name}: {path}")
-        return False
+        try:
+            # Determine the appropriate command based on the target's operating system
+            if target.os_type.lower() == 'windows':
+                # Windows command to check file existence
+                command = f'if exist "{path}" (echo True) else (echo False)'
+            else:
+                # Unix-like systems command to check file existence
+                command = f'test -f "{path}" && echo "True" || echo "False"'
+
+            result = self.execute_command(target, command)
+
+            # Check the output
+            return result['stdout'].strip().lower() == 'true'
+
+        except Exception as e:
+            self.logger.error(f"Error checking file existence on {target.name}: {str(e)}")
+            return False
 
     def read_file_content(self, target: Target, path: str) -> Optional[str]:
         """
-        Read file content on the target.
+        Read the content of a file on the target system.
 
         Args:
-            target: Target to read from
-            path: File path to read
+            target: Target system to read from
+            path: Full path of the file to read
 
         Returns:
-            File content or None in case of error
+            File content as string or None if error occurs
         """
-        # Basic implementation, to be overridden in concrete subclasses
-        self.logger.debug(f"Would read file content on {target.name}: {path}")
-        return None
+        try:
+            # Platform-specific file reading
+            if target.os_type.lower().startswith('windows'):
+                # Windows command to read file content
+                command = f'type "{path}"'
+            else:
+                # Unix-like systems command to read file content
+                command = f'cat "{path}"'
+
+            result = self.execute_command(target, command)
+
+            # Check for successful read
+            if result['exit_code'] == 0:
+                return result['stdout']
+            else:
+                self.logger.error(f"Error reading file {path}: {result['stderr']}")
+                return None
+
+        except Exception as e:
+            self.logger.error(f"Exception reading file on {target.name}: {str(e)}")
+            return None
 
     def check_process_running(self, target: Target, process_name: str) -> bool:
         """
-        Check if a process is running on the target.
+        Check if a specific process is running on the target system.
 
         Args:
-            target: Target to check
-            process_name: Process name to verify
+            target: Target system to check
+            process_name: Name of the process to verify
 
         Returns:
-            True if the process is running, False otherwise
+            Boolean indicating process running status
         """
-        # Basic implementation, to be overridden in concrete subclasses
-        self.logger.debug(f"Would check if process is running on {target.name}: {process_name}")
-        return False
+        try:
+            # Platform-specific process check
+            if target.os_type.lower().startswith('windows'):
+                # Windows command to check process
+                command = f'tasklist /FI "IMAGENAME eq {process_name}" | findstr /I "{process_name}"'
+            else:
+                # Unix-like systems command to check process
+                command = f'pgrep -f "{process_name}" > /dev/null && echo "True" || echo "False"'
+
+            result = self.execute_command(target, command)
+
+            # Check the output
+            return result['exit_code'] == 0
+
+        except Exception as e:
+            self.logger.error(f"Error checking process on {target.name}: {str(e)}")
+            return False
 
     def check_service_status(self, target: Target, service_name: str) -> Dict:
         """
-        Check the status of a service on the target.
+        Check the status of a service on the target system.
 
         Args:
-            target: Target to check
-            service_name: Service name to verify
+            target: Target system to check
+            service_name: Name of the service to verify
 
         Returns:
             Dictionary with service status information
         """
-        # Basic implementation, to be overridden in concrete subclasses
-        self.logger.debug(f"Would check service status on {target.name}: {service_name}")
-        return {
-            'running': False,
-            'enabled': False,
-            'error': "Service status check not implemented in base class"
-        }
+        try:
+            # Platform-specific service status check
+            if target.os_type.lower().startswith('windows'):
+                # Windows service status check
+                status_command = f'sc query "{service_name}"'
+                enabled_command = f'sc qc "{service_name}"'
+            else:
+                # Unix-like systems (assuming systemd)
+                status_command = f'systemctl is-active "{service_name}"'
+                enabled_command = f'systemctl is-enabled "{service_name}"'
+
+            # Check service status
+            status_result = self.execute_command(target, status_command)
+            enabled_result = self.execute_command(target, enabled_command)
+
+            # Determine service status
+            return {
+                'running': status_result['exit_code'] == 0,
+                'enabled': enabled_result['exit_code'] == 0,
+                'status_details': {
+                    'status_stdout': status_result['stdout'],
+                    'enabled_stdout': enabled_result['stdout']
+                }
+            }
+
+        except Exception as e:
+            self.logger.error(f"Error checking service status on {target.name}: {str(e)}")
+            return {
+                'running': False,
+                'enabled': False,
+                'error': str(e)
+            }
+
+    def list_directory_contents(self, target: Target, path: str) -> List[str]:
+        """
+        List contents of a directory on the target system.
+
+        Args:
+            target: Target system to check
+            path: Directory path to list
+
+        Returns:
+            List of directory contents
+        """
+        try:
+            # Platform-specific directory listing
+            if target.os_type.lower().startswith('windows'):
+                # Windows directory listing
+                command = f'dir "{path}" /b'
+            else:
+                # Unix-like systems directory listing
+                command = f'ls -1 "{path}"'
+
+            result = self.execute_command(target, command)
+
+            # Split output into list, removing empty lines
+            return [
+                item.strip()
+                for item in result['stdout'].split('\n')
+                if item.strip()
+            ]
+
+        except Exception as e:
+            self.logger.error(f"Error listing directory contents on {target.name}: {str(e)}")
+            return []
+
+    def get_system_info(self, target: Target) -> Dict:
+        """
+        Retrieve basic system information.
+
+        Args:
+            target: Target system to get information from
+
+        Returns:
+            Dictionary with system information
+        """
+        try:
+            # Platform-specific system information gathering
+            if target.os_type.lower().startswith('windows'):
+                # Windows system info commands
+                commands = {
+                    'hostname': 'hostname',
+                    'os_version': 'ver',
+                    'system_info': 'systeminfo'
+                }
+            else:
+                # Unix-like systems system info commands
+                commands = {
+                    'hostname': 'hostname',
+                    'os_version': 'uname -a',
+                    'system_info': 'cat /etc/os-release'
+                }
+
+            # Execute commands and collect results
+            system_info = {}
+            for key, command in commands.items():
+                result = self.execute_command(target, command)
+                system_info[key] = result['stdout'].strip()
+
+            return system_info
+
+        except Exception as e:
+            self.logger.error(f"Error retrieving system info on {target.name}: {str(e)}")
+            return {}

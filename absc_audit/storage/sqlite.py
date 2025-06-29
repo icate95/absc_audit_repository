@@ -192,7 +192,6 @@ class SQLiteStorage:
 
         cursor = self.conn.cursor()
         for table_name, table_schema in tables.items():
-            logger.info(f"{table_name}")
             try:
                 self.cursor.execute(table_schema)
             except sqlite3.Error as e:
@@ -230,7 +229,10 @@ class SQLiteStorage:
             # Check if the current thread already has a connection
             if not hasattr(self._thread_local, 'conn') or self._thread_local.conn is None:
                 # Create a new connection for this thread
-                self._thread_local.conn = sqlite3.connect(self.db_path)
+                self._thread_local.conn = sqlite3.connect(
+                    self.db_path,
+                    check_same_thread=False
+                    )
                 # Enable foreign key support
                 self._thread_local.conn.execute("PRAGMA foreign_keys = ON")
                 # Configure return of dict instead of tuple
@@ -585,7 +587,7 @@ class SQLiteStorage:
         finally:
             self._disconnect()
 
-    def get_all_checks(self, id) -> List[AuditCheck]:
+    def get_all_checks(self) -> List[AuditCheck]:
         """
         Retrieve all controls from the database.
 
@@ -1604,6 +1606,8 @@ class SQLiteStorage:
     def save_network_devices(self, devices: List[NetworkDevice]):
         """
         Save a list of network devices to the database.
+        If a device with the same MAC address exists, update its information.
+        Otherwise, insert a new device.
 
         Args:
             devices: List of NetworkDevice instances to save
@@ -1611,8 +1615,32 @@ class SQLiteStorage:
         self._connect()
 
         try:
-            query = '''
-            INSERT OR REPLACE INTO network_devices (
+            check_existing_query = '''
+            SELECT id FROM network_devices 
+            WHERE mac = :mac
+            '''
+
+            update_query = '''
+            UPDATE network_devices SET
+                scan_id = :scan_id,
+                ip = :ip,
+                hostname = :hostname,
+                os = :os,
+                os_version = :os_version,
+                services = :services,
+                is_alive = :is_alive,
+                reachable_protocols = :reachable_protocols,
+                potential_vulnerabilities = :potential_vulnerabilities,
+                open_ports = :open_ports,
+                closed_ports = :closed_ports,
+                filtered_ports = :filtered_ports,
+                additional_info = :additional_info,
+                last_seen = :last_seen
+            WHERE mac = :mac
+            '''
+
+            insert_query = '''
+            INSERT INTO network_devices (
                 id, scan_id, ip, mac, hostname, os, os_version,
                 services, is_alive, reachable_protocols, 
                 potential_vulnerabilities, open_ports, 
@@ -1629,7 +1657,19 @@ class SQLiteStorage:
 
             for device in devices:
                 device_data = device.to_dict()
-                self.cursor.execute(query, device_data)
+
+                self.cursor.execute(check_existing_query, device_data)
+                existing_device = self.cursor.fetchone()
+
+                if existing_device:
+                    existing_device_data = self.get_device_by_mac(device_data['mac'])
+                    device_data['first_seen'] = existing_device_data.get('first_seen', device_data['first_seen'])
+
+                    self.cursor.execute(update_query, device_data)
+                    logger.info(f"Updated device with MAC {device_data['mac']}")
+                else:
+                    self.cursor.execute(insert_query, device_data)
+                    logger.info(f"Added new device with MAC {device_data['mac']}")
 
             self.conn.commit()
 
@@ -1638,7 +1678,36 @@ class SQLiteStorage:
             self.conn.rollback()
             raise
 
+    def get_device_by_mac(self, mac: str) -> dict:
+        """
+        Retrieves a network device by its MAC address.
+
+        Arguments:
+            mac: MAC address of the device
+
+        Returns:
+            Dictionary with device data or None if not found
+        """
+        try:
+            query = '''
+            SELECT * FROM network_devices 
+            WHERE mac = ?
+            '''
+
+            self.cursor.execute(query, (mac,))
+            device = self.cursor.fetchone()
+
+            if device:
+                return dict(zip([column[0] for column in self.cursor.description], device))
+
+            return None
+
+        except sqlite3.Error as e:
+            logger.error(f"Error recovering device with MAC {mac}: {e}")
+            raise
+
     def get_network_devices(self,
+                            id: Optional[str] = None,
                             scan_id: Optional[str] = None,
                             ip: Optional[str] = None,
                             hostname: Optional[str] = None,
@@ -1662,6 +1731,10 @@ class SQLiteStorage:
         try:
             conditions = []
             params = []
+
+            if id:
+                conditions.append('id = ?')
+                params.append(id)
 
             if scan_id:
                 conditions.append('scan_id = ?')

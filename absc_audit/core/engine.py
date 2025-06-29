@@ -7,10 +7,8 @@ ABSC security checks on target endpoints.
 
 import concurrent.futures
 import datetime
-import logging
-import time
 import uuid
-from typing import Dict, List, Optional, Tuple, Union, Any
+from typing import Dict, List, Optional
 
 from absc_audit.checks.base import BaseCheck
 from absc_audit.config.settings import Settings
@@ -89,7 +87,7 @@ class AuditEngine:
         if check_id not in self._check_registry:
             raise ValueError(f"Check not found: {check_id}")
 
-        logger.info(f"Running check {check_id} on target {target.name}")
+        # logger.info(f"Running check {check_id} on target {target.name}")
 
         # Create check instance
         check_class = self._check_registry[check_id]
@@ -237,6 +235,17 @@ class CheckRegistry:
     This class manages the registration and retrieval of security
     checks implemented in the system.
     """
+
+    CATEGORIES = [
+        "Inventory",
+        "Authentication",
+        "Vulnerability",
+        "Malware Protection",
+        "Admin Access",
+        "Encryption",
+        "Logging",
+        "Backup"
+    ]
 
     _instance = None
 

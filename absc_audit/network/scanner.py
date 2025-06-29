@@ -151,7 +151,7 @@ class NetworkScanner:
     def scan_network_nmap(self,
                            network_range: str,
                            ports: str = '22,80,443,3389',
-                           scan_type: str = 'basic') -> List[Dict[str, Any]]:
+                           scan_type: str = 'vulnerability') -> List[Dict[str, Any]]:
         """
         Scan a network using Nmap with different detail levels.
 
@@ -170,6 +170,7 @@ class NetworkScanner:
         if not self.validate_network_range(network_range):
             return []
 
+        logging.info(f"SCANNING WITH NMAP {network_range} for {ports} ports on {scan_type} scan type {scan_type}")
         try:
             nm = nmap.PortScanner()
 
